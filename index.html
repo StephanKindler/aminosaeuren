@@ -1,0 +1,3551 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AminoLab 3D – Chemie LK</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js r128 (ohne Importmaps: läuft lokal per file:// und auf iPad Safari) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ==================== THEME-VARIABLEN (TAG- & NACHTMODUS) ==================== */
+    :root {
+      --bg-page: #e6ecf2;
+      --bg-surface: rgba(255, 255, 255, 0.94);
+      --bg-surface-solid: #ffffff;
+      --bg-surface-soft: #f1f5f9;
+      --bg-surface-hover: #e2e8f0;
+      --border-main: #cbd5e1;
+      --border-soft: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --seg-bg: #e2e8f0;
+      --seg-active-bg: #ffffff;
+      --seg-active-text: #0f172a;
+      --badge-bg: #f1f5f9;
+      --badge-text: #334155;
+      --svg-stroke: #1e293b;
+      --svg-alpha: #475569;
+      --scroll-thumb: #cbd5e1;
+      --shadow-card: 0 8px 24px -6px rgba(15, 23, 42, 0.12);
+    }
+
+    body.dark {
+      --bg-page: #0f172a;
+      --bg-surface: rgba(15, 23, 42, 0.90);
+      --bg-surface-solid: #1e293b;
+      --bg-surface-soft: #1e293b;
+      --bg-surface-hover: #334155;
+      --border-main: #334155;
+      --border-soft: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --seg-bg: #0f172a;
+      --seg-active-bg: #334155;
+      --seg-active-text: #f8fafc;
+      --badge-bg: #334155;
+      --badge-text: #e2e8f0;
+      --svg-stroke: #e2e8f0;
+      --svg-alpha: #94a3b8;
+      --scroll-thumb: #475569;
+      --shadow-card: 0 10px 28px -6px rgba(0, 0, 0, 0.55);
+    }
+
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Theme-gebundene Oberflächenklassen */
+    .ui-surface {
+      background-color: var(--bg-surface);
+      border-color: var(--border-main);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-card);
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+    .ui-surface-flat {
+      background-color: var(--bg-surface);
+      border-color: var(--border-main);
+      color: var(--text-primary);
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+    .ui-surface-soft {
+      background-color: var(--bg-surface-soft);
+      border-color: var(--border-soft);
+    }
+    .ui-border {
+      border-color: var(--border-soft);
+    }
+    .ui-text-primary { color: var(--text-primary); }
+    .ui-text-secondary { color: var(--text-secondary); }
+    .ui-text-muted { color: var(--text-muted); }
+
+    .ui-btn-ghost {
+      color: var(--text-secondary);
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .ui-btn-ghost:hover {
+      background-color: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+
+    .ui-seg-wrap {
+      background-color: var(--seg-bg);
+    }
+    .ui-seg-active {
+      background-color: var(--seg-active-bg);
+      color: var(--seg-active-text);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+    }
+    .ui-seg-inactive {
+      color: var(--text-muted);
+    }
+    .ui-seg-inactive:hover {
+      color: var(--text-primary);
+    }
+
+    .ui-toggle-off {
+      background-color: var(--bg-surface-solid);
+      border-color: var(--border-main);
+      color: var(--text-secondary);
+    }
+    .ui-toggle-off:hover {
+      background-color: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+
+    .ui-badge {
+      background-color: var(--badge-bg);
+      color: var(--badge-text);
+    }
+
+    /* Dark-Mode Anpassungen für farbige Gruppen-Chips & Kategorien */
+    body.dark .chip-rose   { background-color: rgba(225, 29, 72, 0.18);  border-color: rgba(251, 113, 133, 0.45); color: #fda4af; }
+    body.dark .chip-blue   { background-color: rgba(37, 99, 235, 0.20);  border-color: rgba(96, 165, 250, 0.45);  color: #93c5fd; }
+    body.dark .chip-teal   { background-color: rgba(13, 148, 136, 0.20); border-color: rgba(45, 212, 191, 0.45);  color: #5eead4; }
+    body.dark .chip-amber  { background-color: rgba(217, 119, 6, 0.20);  border-color: rgba(251, 191, 36, 0.45);  color: #fcd34d; }
+    body.dark .chip-yellow { background-color: rgba(202, 138, 4, 0.20);  border-color: rgba(250, 204, 21, 0.45);  color: #fde047; }
+    body.dark .chip-violet { background-color: rgba(124, 58, 237, 0.22); border-color: rgba(167, 139, 250, 0.45); color: #c4b5fd; }
+    body.dark .chip-sky    { background-color: rgba(2, 132, 199, 0.20);  border-color: rgba(56, 189, 248, 0.45);  color: #7dd3fc; }
+    body.dark .chip-orange { background-color: rgba(234, 88, 12, 0.20);  border-color: rgba(251, 146, 60, 0.45);  color: #fdba74; }
+    body.dark .chip-indigo { background-color: rgba(79, 70, 229, 0.22);  border-color: rgba(129, 140, 248, 0.45); color: #a5b4fc; }
+    body.dark .chip-emerald{ background-color: rgba(16, 185, 129, 0.20); border-color: rgba(52, 211, 153, 0.45);  color: #6ee7b7; }
+
+    body.dark .aa-item-active {
+      background-color: rgba(37, 99, 235, 0.22);
+      border-color: rgba(96, 165, 250, 0.55);
+      color: #eff6ff;
+    }
+
+    /* WebGL Canvas: volle 1- & 2-Finger-Touch-Kontrolle */
+    #viewport-canvas {
+      touch-action: none;
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #viewport-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* Dezente Scrollbars */
+    .thin-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+    .thin-scroll::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 9999px; }
+
+    /* Interaktive 2D-SVG-Skelettformel */
+    .svg-group {
+      cursor: pointer;
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+    .svg-group:hover .svg-vis {
+      filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.55));
+    }
+    .svg-group.is-dimmed {
+      opacity: 0.22;
+    }
+    .svg-group.is-active .svg-vis {
+      filter: drop-shadow(0 0 4px var(--group-color, #2563eb));
+    }
+    .svg-hit {
+      fill: transparent;
+      stroke: transparent;
+      stroke-width: 20px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: all;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- ==================== KOPFZEILE ==================== -->
+  <header class="ui-surface-flat h-14 shrink-0 backdrop-blur border-b px-3 sm:px-4 flex items-center justify-between gap-2 z-30">
+    <!-- Links: Sidebar-Toggle + App-Logo -->
+    <div class="flex items-center gap-2.5 min-w-0">
+      <button
+        id="btn-toggle-sidebar"
+        type="button"
+        title="Aminosäuren-Liste ein-/ausblenden"
+        class="ui-btn-ghost p-2 rounded-xl flex items-center justify-center shrink-0"
+        aria-label="Seitenleiste umschalten"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white font-extrabold text-xs shadow-sm shrink-0">
+          3D
+        </div>
+        <div class="leading-tight truncate">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold ui-text-primary text-sm sm:text-base tracking-tight">AminoLab 3D</span>
+            <span class="hidden md:inline-block text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md chip-blue bg-blue-50 text-blue-700 border border-blue-200">Chemie LK</span>
+          </div>
+          <p class="hidden lg:block text-[11px] ui-text-muted">L-Aminosäuren · Fischer-Projektion &amp; Zwischenmolekulare Kräfte</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rechts: Aktuelle Aminosäure + Nachtmodus + Beamer-Vollbild -->
+    <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
+      <div class="text-right min-w-0">
+        <div class="flex items-center justify-end gap-1.5">
+          <h1 id="header-aa-name" class="font-bold ui-text-primary text-sm sm:text-base truncate">L-Alanin</h1>
+          <span id="header-aa-codes" class="ui-badge text-xs font-mono font-bold px-2 py-0.5 rounded-lg shrink-0">Ala · A</span>
+        </div>
+        <div class="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs ui-text-muted">
+          <span id="header-aa-formula" class="font-medium ui-text-secondary">C<sub>3</sub>H<sub>7</sub>NO<sub>2</sub></span>
+          <span>·</span>
+          <span id="header-aa-mass">89,09 g/mol</span>
+        </div>
+      </div>
+
+      <span id="header-aa-category" class="hidden xl:inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 border">
+        Unpolar / Aliphatisch
+      </span>
+
+      <!-- Nachtmodus / Tagmodus Toggle -->
+      <button
+        id="btn-darkmode"
+        type="button"
+        title="Zwischen Tagmodus und Nachtmodus (ideal für Beamer) wechseln"
+        class="ui-toggle-off px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 shrink-0"
+        aria-label="Nachtmodus umschalten"
+      >
+        <svg id="icon-moon" class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+        </svg>
+        <svg id="icon-sun" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        </svg>
+        <span id="label-darkmode" class="hidden sm:inline">Nachtmodus</span>
+      </button>
+
+      <!-- Beamer-Vollbild-Knopf -->
+      <button
+        id="btn-fullscreen"
+        type="button"
+        title="Beamer-Vollbild ein-/ausschalten"
+        class="ui-toggle-off p-2 rounded-xl border transition shrink-0"
+        aria-label="Vollbild umschalten"
+      >
+        <svg id="icon-fs-enter" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" />
+        </svg>
+        <svg id="icon-fs-exit" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== ARBEITSBEREICH ==================== -->
+  <div class="flex-1 flex relative overflow-hidden">
+
+    <!-- Mobiler Backdrop für Sidebar -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-950/40 backdrop-blur-[1px] z-20 hidden lg:hidden"></div>
+
+    <!-- ==================== LINKE SIDEBAR: 11 L-AMINOSÄUREN ==================== -->
+    <aside
+      id="sidebar"
+      class="ui-surface-flat w-72 max-w-[82vw] shrink-0 backdrop-blur-md border-r flex flex-col z-20
+             fixed lg:static inset-y-14 lg:inset-y-0 left-0 bottom-0 transition-transform duration-200 ease-out
+             -translate-x-full lg:translate-x-0 shadow-xl lg:shadow-none"
+    >
+      <div class="px-4 py-3 border-b ui-border flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-wider ui-text-muted">11 L-Aminosäuren</h2>
+          <p class="text-[11px] ui-text-muted opacity-80 mt-0.5">Nach Seitenketten-Eigenschaft</p>
+        </div>
+        <button id="btn-close-sidebar-mobile" type="button" class="lg:hidden ui-btn-ghost p-1.5 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Dynamische Liste -->
+      <div id="aa-list" class="flex-1 overflow-y-auto thin-scroll p-2.5 space-y-3"></div>
+
+      <!-- CPK-Farblegende -->
+      <div class="p-3 border-t ui-border ui-surface-soft">
+        <div class="text-[10px] font-bold uppercase tracking-wider ui-text-muted mb-2">CPK-Farbschema</div>
+        <div class="grid grid-cols-5 gap-1.5 text-center text-[11px] font-semibold ui-text-secondary">
+          <div class="flex flex-col items-center gap-1">
+            <span class="w-4 h-4 rounded-full bg-[#646b75] shadow-inner ring-1 ring-slate-400/50"></span>
+            <span>C</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span class="w-4 h-4 rounded-full bg-[#dde3ea] shadow-inner ring-1 ring-slate-400/70"></span>
+            <span>H</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span class="w-4 h-4 rounded-full bg-[#e52e2e] shadow-inner ring-1 ring-red-400/50"></span>
+            <span>O</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span class="w-4 h-4 rounded-full bg-[#2b6ef2] shadow-inner ring-1 ring-blue-400/50"></span>
+            <span>N</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <span class="w-4 h-4 rounded-full bg-[#e2b91b] shadow-inner ring-1 ring-amber-400/50"></span>
+            <span>S</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==================== 3D-VIEWPORT & OVERLAYS ==================== -->
+    <main class="flex-1 relative overflow-hidden">
+      <!-- WebGL Canvas -->
+      <canvas id="viewport-canvas"></canvas>
+
+      <!-- Toast-Banner -->
+      <div id="toast-banner" class="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-30 opacity-0 transition-opacity duration-200">
+        <div id="toast-text" class="px-3.5 py-2 rounded-xl bg-slate-900/92 text-white text-xs font-medium shadow-lg backdrop-blur border border-slate-700/80 whitespace-nowrap">
+          Hinweis
+        </div>
+      </div>
+
+      <!-- ==================== FISCHER-PROJEKTIONS-LEGENDE (OBEN MITTE) ==================== -->
+      <div id="fischer-banner" class="hidden absolute top-16 sm:top-3 left-1/2 -translate-x-1/2 z-20 max-w-[92%] sm:max-w-lg pointer-events-auto">
+        <div class="bg-blue-600/95 text-white backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg border border-blue-400/50 flex items-center gap-3">
+          <div class="text-[11px] sm:text-xs leading-snug">
+            <div class="font-bold">Fischer-Projektion (ekliptische C-Bogen-Form)</div>
+            <div class="text-blue-100 mt-0.5">
+              <strong class="text-white">Vertikal:</strong> C-Kette nach hinten gekrümmt (–COOH oben) ·
+              <strong class="text-white">Horizontal:</strong> zum Betrachter (L: –NH₂ links)
+            </div>
+          </div>
+          <button id="btn-close-fischer-banner" type="button" title="Hinweis ausblenden" class="p-1 rounded-lg hover:bg-white/15 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== OBEN LINKS: ANSICHT, KONFORMATION & ROLL ==================== -->
+      <div class="absolute top-3 left-3 z-20 flex flex-col gap-2 items-start max-w-[calc(100%-1.5rem)]">
+        <!-- Zeile 1: Ansichts-Presets + Roll -->
+        <div class="ui-surface backdrop-blur-md p-1.5 rounded-2xl border flex flex-wrap items-center gap-1">
+          <!-- Fischer-Projektion (Smooth SLERP + ekliptisches Morphing) -->
+          <button
+            id="btn-view-fischer"
+            type="button"
+            title="Molekül in die echte ekliptische Fischer-Projektion drehen & krümmen"
+            class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M3 12h18" />
+            </svg>
+            <span>Fischer-Projektion</span>
+          </button>
+
+          <!-- 3D-Standardansicht -->
+          <button
+            id="btn-view-3d"
+            type="button"
+            title="Zurück in plastische 3D-Standardansicht (Reset)"
+            class="ui-btn-ghost px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+            </svg>
+            <span class="hidden sm:inline">3D-Standard</span>
+          </button>
+
+          <!-- Auto-Rotation -->
+          <button
+            id="btn-autorotate"
+            type="button"
+            title="Automatische Drehung"
+            class="px-2 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1"
+          >
+            <svg id="icon-auto-play" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <svg id="icon-auto-pause" class="w-3.5 h-3.5 hidden" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 5h4v14H6zm8 0h4v14h-4z" />
+            </svg>
+            <span class="hidden md:inline">Auto</span>
+          </button>
+
+          <!-- Z-Achsen-Roll-Buttons -->
+          <div class="hidden sm:flex items-center border-l ui-border pl-1 ml-0.5 gap-0.5">
+            <button id="btn-roll-left" type="button" title="Nach links kippen (Shift+Drag / 2-Finger-Twist)" class="ui-btn-ghost p-1.5 rounded-lg">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h4V6M3 10a9 9 0 111.5 5.2" />
+              </svg>
+            </button>
+            <button id="btn-roll-right" type="button" title="Nach rechts kippen (Shift+Drag / 2-Finger-Twist)" class="ui-btn-ghost p-1.5 rounded-lg">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 10h-4V6M21 10a9 9 0 10-1.5 5.2" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Zeile 2: Konformations-Umschalter (bleibt beim freien seitlichen Drehen aktiv!) -->
+        <div class="ui-surface backdrop-blur-md px-2 py-1 rounded-2xl border flex items-center gap-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider ui-text-muted pl-1">Konformation:</span>
+          <div class="ui-seg-wrap inline-flex p-0.5 rounded-xl">
+            <button id="conf-staggered" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition">
+              Gestaffelt
+            </button>
+            <button id="conf-fischer" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition">
+              Fischer-Bogen
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamische Legende aktiver zwischenmolekularer Kräfte -->
+        <div id="forces-legend" class="hidden ui-surface backdrop-blur-md px-3 py-2.5 rounded-2xl border text-[11px] space-y-1.5 max-w-[260px]"></div>
+      </div>
+
+      <!-- ==================== OBEN RECHTS: GRUPPEN & FACHINFO ==================== -->
+      <div class="absolute top-3 right-3 z-20 w-[290px] sm:w-[325px] max-w-[calc(100%-1.5rem)] flex flex-col items-end gap-2 pointer-events-none">
+        <button
+          id="btn-toggle-infocard"
+          type="button"
+          class="ui-surface pointer-events-auto px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-semibold flex items-center gap-1.5 hover:opacity-95"
+        >
+          <span>Gruppen &amp; Fachinfo</span>
+          <svg id="icon-infocard-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <div
+          id="infocard-panel"
+          class="ui-surface pointer-events-auto w-full backdrop-blur-md rounded-2xl border overflow-hidden transition-all duration-200 max-h-[50vh] flex flex-col"
+        >
+          <!-- Gruppen-Chips -->
+          <div class="p-3 border-b ui-border">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider ui-text-muted">Funktionelle Gruppen (Klick/Tap)</span>
+              <button id="btn-clear-group" type="button" class="hidden text-[11px] font-semibold text-blue-500 hover:text-blue-400">
+                Alle zeigen
+              </button>
+            </div>
+            <div id="group-chips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <!-- Fachinfo-Text -->
+          <div id="group-info-body" class="p-3.5 overflow-y-auto thin-scroll text-xs leading-relaxed ui-text-secondary space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- ==================== UNTEN LINKS: INTERAKTIVE 2D-SKELETTFORMEL ==================== -->
+      <div id="skeletal-card" class="absolute bottom-20 left-3 z-20 flex flex-col items-start pointer-events-none">
+        <div class="ui-surface pointer-events-auto backdrop-blur-md rounded-2xl border overflow-hidden transition-all duration-200">
+          <!-- Kopfzeile der 2D-Karte -->
+          <div class="px-3 py-1.5 border-b ui-border flex items-center justify-between gap-4">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-bold ui-text-primary">Skelettformel</span>
+              <span id="skeletal-state-badge" class="ui-badge text-[10px] font-semibold px-1.5 py-0.5 rounded-md">Neutral</span>
+            </div>
+            <button
+              id="btn-toggle-skeletal"
+              type="button"
+              title="Skelettformel minimieren/aufklappen"
+              class="ui-btn-ghost p-1 rounded-lg"
+            >
+              <svg id="icon-skeletal-chev" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- 2D-SVG-Container -->
+          <div id="skeletal-body" class="p-2 flex flex-col items-center">
+            <div id="skeletal-svg-wrap" class="w-[175px] sm:w-[210px] h-[165px] sm:h-[200px] flex items-center justify-center"></div>
+            <div class="text-[10px] ui-text-muted text-center pb-0.5">
+              Gruppen direkt in der Formel antippen
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== UNTEN MITTE: STEUERUNGS-DOCK ==================== -->
+      <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 w-[calc(100%-1.5rem)] max-w-5xl flex justify-center pointer-events-none">
+        <div class="ui-surface pointer-events-auto backdrop-blur-md border rounded-2xl p-1.5 flex flex-wrap items-center justify-center gap-1.5">
+
+          <!-- Segment 1: Kugel-Stab vs. Kalotte -->
+          <div class="ui-seg-wrap inline-flex p-0.5 rounded-xl">
+            <button id="mode-ballstick" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">Kugel-Stab</button>
+            <button id="mode-spacefill" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">Kalotte</button>
+          </div>
+
+          <div class="hidden sm:block w-px h-6 ui-border border-l"></div>
+
+          <!-- Segment 2: Neutral vs. Zwitterion (pH 7) -->
+          <div class="ui-seg-wrap inline-flex p-0.5 rounded-xl">
+            <button id="state-neutral" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">Neutral</button>
+            <button id="state-zwitterion" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">Zwitterion (pH 7)</button>
+          </div>
+
+          <div class="hidden sm:block w-px h-6 ui-border border-l"></div>
+
+          <!-- Segment 3: Struktur-Overlays -->
+          <button id="toggle-lonepairs" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>Freie EP</span>
+          </button>
+
+          <button id="toggle-labels" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5">
+            <span class="font-mono text-[11px] font-bold">Cα</span>
+            <span>Symbole</span>
+          </button>
+
+          <div class="hidden sm:block w-px h-6 ui-border border-l"></div>
+
+          <!-- Segment 4: Zwischenmolekulare Kräfte (exakte LK-Terminologie) -->
+          <button id="toggle-hbond" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+            <span>WBB</span>
+          </button>
+
+          <button id="toggle-london" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>London-Kräfte</span>
+          </button>
+
+          <button id="toggle-keesom" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Dipol (Keesom)</span>
+          </button>
+
+          <button id="toggle-ionic" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>Ionen-WW</span>
+          </button>
+
+          <!-- Info-Button zur exakten VdW-Definition -->
+          <button
+            id="btn-open-vdw-modal"
+            type="button"
+            title="Systematik & Definition der Van-der-Waals-Wechselwirkungen"
+            class="ui-toggle-off px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="hidden md:inline">Definition VdW-WW</span>
+            <span class="md:hidden">VdW</span>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== MODAL: DEFINITION VAN-DER-WAALS-WECHSELWIRKUNGEN ==================== -->
+  <div id="vdw-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/55 backdrop-blur-xs">
+    <div class="ui-surface rounded-3xl border max-w-xl w-full overflow-hidden">
+      <div class="px-6 py-4 border-b ui-border ui-surface-soft flex items-center justify-between">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-blue-500">Fachbegriff-Systematik · Chemie LK</span>
+          <h2 class="text-base sm:text-lg font-bold ui-text-primary mt-0.5">Van-der-Waals-Wechselwirkungen</h2>
+        </div>
+        <button id="btn-close-vdw-modal" type="button" class="ui-btn-ghost p-2 rounded-xl">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-sm ui-text-secondary leading-relaxed">
+        <p>
+          <strong class="ui-text-primary">Van-der-Waals-Wechselwirkungen</strong> bilden den <em>Oberbegriff</em> für drei verschiedene elektrostatische Anziehungskräfte zwischen Molekülen:
+        </p>
+
+        <div class="space-y-2.5">
+          <div class="p-3.5 rounded-2xl chip-emerald bg-emerald-50/90 border border-emerald-200/80">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold">1. Keesom-Wechselwirkung</span>
+              <span class="ui-badge text-xs font-mono font-bold px-2 py-0.5 rounded-lg">2–25 kJ/mol</span>
+            </div>
+            <p class="text-xs opacity-90 mt-1">
+              Anziehung <strong>permanenter Dipol – permanenter Dipol</strong> (z. B. zwischen polaren Carbonyl-, Hydroxyl-, Thiol- oder Thioethergruppen).
+            </p>
+          </div>
+
+          <div class="p-3.5 rounded-2xl chip-sky bg-sky-50/90 border border-sky-200/80">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold">2. Debye-Wechselwirkung</span>
+              <span class="ui-badge text-xs font-mono font-bold px-2 py-0.5 rounded-lg">2–10 kJ/mol</span>
+            </div>
+            <p class="text-xs opacity-90 mt-1">
+              Anziehung <strong>permanenter Dipol – polarisierbares Teilchen</strong> (ein permanenter Dipol induziert in einem benachbarten unpolaren Molekülbereich ein temporäres Dipolmoment).
+            </p>
+          </div>
+
+          <div class="p-3.5 rounded-2xl chip-amber bg-amber-50/90 border border-amber-200/80">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold">3. London-Wechselwirkung (Dispersionskräfte)</span>
+              <span class="ui-badge text-xs font-mono font-bold px-2 py-0.5 rounded-lg">0,1–40 kJ/mol</span>
+            </div>
+            <p class="text-xs opacity-90 mt-1">
+              Anziehung <strong>polarisierbares Teilchen – polarisierbares Teilchen</strong> (spontane und induzierte temporäre Dipole). Dominierend bei unpolaren Alkylketten (Leu, Ala, Pro), Thioethern (Met) sowie aromatischen Ringen (Phe, Trp inkl. π-π-Stacking).
+            </p>
+          </div>
+        </div>
+
+        <p class="text-xs ui-text-muted pt-1">
+          Hinweis: <strong>Wasserstoffbrücken</strong> (~10–40 kJ/mol) und <strong>Ionenbindungen / Salzbrücken</strong> (&gt;100 kJ/mol im Vakuum, ~10–25 kJ/mol in Wasser) werden aufgrund ihrer Stärke bzw. ihres gerichteten Charakters gesondert betrachtet.
+        </p>
+      </div>
+
+      <div class="px-6 py-3.5 ui-surface-soft border-t ui-border flex justify-end">
+        <button id="btn-ok-vdw-modal" type="button" class="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition">
+          Verstanden
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== HAUPTSKRIPT ==================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. KONSTANTEN: CPK-FARBEN (KONTRASTREICH), RADIEN & FACHMETADATEN
+      // =========================================================================
+
+      const CPK = {
+        C: { color: 0x646b75, hex: '#646b75', radius: 0.43, vdw: 1.70, name: 'Kohlenstoff' },
+        H: { color: 0xdde3ea, darkColor: 0xeef2f7, hex: '#dde3ea', radius: 0.28, vdw: 1.20, name: 'Wasserstoff' },
+        O: { color: 0xe52e2e, hex: '#e52e2e', radius: 0.40, vdw: 1.52, name: 'Sauerstoff' },
+        N: { color: 0x2b6ef2, hex: '#2b6ef2', radius: 0.41, vdw: 1.55, name: 'Stickstoff' },
+        S: { color: 0xe2b91b, hex: '#e2b91b', radius: 0.48, vdw: 1.80, name: 'Schwefel' }
+      };
+
+      const BG_DAY = 0xe6ecf2;
+      const BG_DARK = 0x0f172a;
+
+      const CATEGORY_STYLES = {
+        unpolar:    { label: 'Unpolar / Aliphatisch', dot: 'bg-amber-500',  badge: 'chip-amber bg-amber-50 text-amber-800 border-amber-200' },
+        aromatisch: { label: 'Aromatisch',            dot: 'bg-violet-500', badge: 'chip-violet bg-violet-50 text-violet-800 border-violet-200' },
+        polar:      { label: 'Polar (ungeladen)',     dot: 'bg-sky-500',    badge: 'chip-sky bg-sky-50 text-sky-800 border-sky-200' },
+        sauer:      { label: 'Sauer',                 dot: 'bg-rose-500',   badge: 'chip-rose bg-rose-50 text-rose-800 border-rose-200' },
+        basisch:    { label: 'Basisch',               dot: 'bg-blue-600',   badge: 'chip-blue bg-blue-50 text-blue-800 border-blue-200' }
+      };
+
+      const GROUP_META = {
+        carboxyl: {
+          name: (zw) => zw ? 'Carboxylatgruppe (α)' : 'Carboxylgruppe (α)',
+          formula: (zw) => zw ? '–COO⁻' : '–COOH',
+          accentHex: '#e11d48',
+          chipClass: 'chip-rose border-rose-200 bg-rose-50 text-rose-800',
+          activeChipClass: 'border-rose-600 bg-rose-600 text-white shadow-sm',
+          polarity: (zw) => zw ? 'Ionisch (negativ geladen)' : 'Stark polar · Brønsted-Säure (pKs ≈ 2,0–2,4)',
+          forces: (zw) => zw ? 'Ionen-WW, starke WBB (Akzeptor)' : 'WBB (Donator & Akzeptor), Keesom-WW',
+          desc: (zw) => zw
+            ? 'Bei pH 7 ist die α-Carboxylgruppe deprotoniert (–COO⁻). Die negative Ladung ist über beide O-Atome mesomeriestabilisiert (Bindungsordnung 1,5). Sie wirkt als starker WBB-Akzeptor und bildet Salzbrücken.'
+            : 'Planare sp²-Gruppe (120°) aus Carbonyl- (C=O) und Hydroxygruppe (–OH). Stark sauer (pKs ≈ 2,0–2,4), wirkt als WBB-Donator/-Akzeptor und reagiert bei der Peptidbindung.'
+        },
+        amino: {
+          name: (zw) => zw ? 'Ammoniumgruppe (α)' : 'Aminogruppe (α)',
+          formula: (zw) => zw ? '–NH₃⁺' : '–NH₂',
+          accentHex: '#2563eb',
+          chipClass: 'chip-blue border-blue-200 bg-blue-50 text-blue-800',
+          activeChipClass: 'border-blue-600 bg-blue-600 text-white shadow-sm',
+          polarity: (zw) => zw ? 'Ionisch (positiv geladen)' : 'Polar · Brønsted-Base (pKs(BH⁺) ≈ 9,0–10,6)',
+          forces: (zw) => zw ? 'Ionen-WW, starke WBB (Donator)' : 'WBB (Donator & Akzeptor), Keesom-WW',
+          desc: (zw) => zw
+            ? 'Bei pH 7 ist das freie Elektronenpaar der Aminogruppe protoniert (–NH₃⁺, tetraedrisch sp³). Die positive Ladung ermöglicht starke elektrostatische Ionen-WW und WBB.'
+            : 'Primäre Aminogruppe mit basischem freien Elektronenpaar am sp³-Stickstoff. In der L-Fischer-Projektion steht sie exakt links und zeigt nach vorne zum Betrachter.'
+        },
+        amino_sec: {
+          name: (zw) => zw ? 'Sek. Ammoniumgruppe' : 'Sek. Aminogruppe',
+          formula: (zw) => zw ? '>NH₂⁺' : '>NH',
+          accentHex: '#2563eb',
+          chipClass: 'chip-blue border-blue-200 bg-blue-50 text-blue-800',
+          activeChipClass: 'border-blue-600 bg-blue-600 text-white shadow-sm',
+          polarity: (zw) => zw ? 'Ionisch (positiv geladen)' : 'Polar · Brønsted-Base (im Ring)',
+          forces: (zw) => zw ? 'Ionen-WW, WBB (Donator)' : 'WBB (Donator & Akzeptor), Keesom-WW',
+          desc: (zw) => zw
+            ? 'Bei Prolin liegt der Stickstoff im 5-gliedrigen Pyrrolidinring und trägt bei pH 7 zwei H-Atome (>NH₂⁺). Wichtig für Ionen-WW und Pufferwirkung (pKs ≈ 10,6).'
+            : 'Besonderheit im Chemie-LK: Da der Stickstoff in den Ring eingebunden ist, fehlt nach Bildung einer Peptidbindung ein Amid-H-Atom für α-Helix-WBB – Prolin wirkt als „Helixbrecher“.'
+        },
+        alpha_c: {
+          name: (zw, aaId) => aaId === 'gly' ? 'α-C-Atom (achiral)' : 'α-C-Atom (Chiralitätszentrum)',
+          formula: (zw, aaId) => aaId === 'gly' ? '–CH₂–' : 'Cα*–H',
+          accentHex: '#0d9488',
+          chipClass: 'chip-teal border-teal-200 bg-teal-50 text-teal-800',
+          activeChipClass: 'border-teal-600 bg-teal-600 text-white shadow-sm',
+          polarity: () => 'Zentrales sp³-Tetraeder (109,5°)',
+          forces: () => 'Gerüstzentrum (bestimmt L/D-Stereochemie)',
+          desc: (zw, aaId) => {
+            if (aaId === 'gly') {
+              return 'Glycin trägt zwei identische H-Atome am α-C-Atom und besitzt kein Chiralitätszentrum (achiral, optisch inaktiv).';
+            }
+            if (aaId === 'cys') {
+              return 'Tetraedrisches Chiralitätszentrum in L-Konfiguration. Wichtige LK-Ausnahme nach CIP-Nomenklatur: Wegen des Schwefelatoms (OZ 16) hat –CH₂SH höhere Priorität als –COOH – L-Cystein ist daher (R)-konfiguriert!';
+            }
+            return 'Asymmetrisches sp³-C-Atom mit vier verschiedenen Substituenten. In der L-Fischer-Projektion stehen –COOH oben-hinten, –R unten-hinten, –NH₂ links-vorne und –H rechts-vorne (CIP-(S)-Konfiguration).';
+          }
+        },
+        alkyl: {
+          name: (zw, aaId) => (['ala', 'leu'].includes(aaId) ? 'Alkylrest (Seitenkette)' : 'Alkylkette / –CH₂–'),
+          formula: (zw, aaId) => ({ ala: '–CH₃', leu: '–CH₂–CH(CH₃)₂', lys: '–(CH₂)₄–' }[aaId] || '–CH₂–'),
+          accentHex: '#d97706',
+          chipClass: 'chip-amber border-amber-200 bg-amber-50 text-amber-800',
+          activeChipClass: 'border-amber-600 bg-amber-600 text-white shadow-sm',
+          polarity: () => 'Unpolar · Hydrophob',
+          forces: () => 'London-Wechselwirkungen (0,1–40 kJ/mol)',
+          desc: (zw, aaId) => {
+            if (aaId === 'leu') return 'Der verzweigte, gut polarisierbare Isobutylrest besteht nur aus unpolaren C–C- und C–H-Bindungen. Er stabilisiert den hydrophoben Kern von Proteinen über London-Kräfte.';
+            if (aaId === 'ala') return 'Die unpolare Methylgruppe (–CH₃) wechselwirkt über schwache London-Kräfte (Dispersionskräfte).';
+            return 'Gesättigte, unpolare Kohlenwasserstoff-Brücke (sp³), die über London-Kräfte wechselwirkt und das α-C-Atom flexibel mit der Seitenkettengruppe verknüpft.';
+          }
+        },
+        pyrrolidine: {
+          name: () => 'Pyrrolidinring',
+          formula: () => '–(CH₂)₃– (zyklisch)',
+          accentHex: '#d97706',
+          chipClass: 'chip-amber border-amber-200 bg-amber-50 text-amber-800',
+          activeChipClass: 'border-amber-600 bg-amber-600 text-white shadow-sm',
+          polarity: () => 'Unpolar · Konformativ starr',
+          forces: () => 'London-Wechselwirkungen',
+          desc: () => 'Der 5-gliedrige Ring schließt die Seitenkette kovalent zurück an den α-Stickstoff. Die eingeschränkte Drehbarkeit um Cα–N erzwingt Knicke in Proteinstrukturen (Helixbrecher).'
+        },
+        thioether: {
+          name: () => 'Thioethergruppe',
+          formula: () => '–(CH₂)₂–S–CH₃',
+          accentHex: '#ca8a04',
+          chipClass: 'chip-yellow border-yellow-200 bg-yellow-50 text-yellow-800',
+          activeChipClass: 'border-yellow-600 bg-yellow-600 text-white shadow-sm',
+          polarity: () => 'Schwach polar / überwiegend hydrophob',
+          forces: () => 'Starke London-Kräfte (S gut polarisierbar), sehr schwache Keesom-WW',
+          desc: () => 'Das große, leicht polarisierbare Schwefelatom verstärkt die London-Kräfte, erzeugt aber wegen der geringen EN-Differenz zu C (ΔEN ≈ 0,03) kaum Polarität. Kann im Gegensatz zu Cystein keine Disulfidbrücken bilden.'
+        },
+        benzene: {
+          name: () => 'Phenylring (Benzolring)',
+          formula: () => '–C₆H₅',
+          accentHex: '#7c3aed',
+          chipClass: 'chip-violet border-violet-200 bg-violet-50 text-violet-800',
+          activeChipClass: 'border-violet-600 bg-violet-600 text-white shadow-sm',
+          polarity: () => 'Unpolar · Aromatisch (6 π-Elektronen)',
+          forces: () => 'Starke London-Kräfte & π-π-Stacking',
+          desc: () => 'Planarer, mesomeriestabilisierter Sechsring (sp², 120°). Die leicht verschiebbare π-Elektronenwolke ober- und unterhalb der Ringebene ermöglicht ausgeprägte London-Wechselwirkungen (π-π-Stacking).'
+        },
+        indole: {
+          name: () => 'Indol-Ringsystem',
+          formula: () => '–C₈H₆N (Bicyclus)',
+          accentHex: '#7c3aed',
+          chipClass: 'chip-violet border-violet-200 bg-violet-50 text-violet-800',
+          activeChipClass: 'border-violet-600 bg-violet-600 text-white shadow-sm',
+          polarity: () => 'Aromatisch (10 π-e⁻) · Polar an N–H',
+          forces: () => 'Starke London-Kräfte (π-π-WW), WBB-Donator an N–H',
+          desc: () => 'Großer planarer Aromat aus Benzol- und Pyrrolring. Das freie Elektronenpaar am Indol-N ist ins aromatische π-System delokalisiert (daher nicht basisch!), während die N–H-Bindung als WBB-Donator wirkt.'
+        },
+        hydroxyl: {
+          name: () => 'Hydroxygruppe',
+          formula: () => '–OH',
+          accentHex: '#0284c7',
+          chipClass: 'chip-sky border-sky-200 bg-sky-50 text-sky-800',
+          activeChipClass: 'border-sky-600 bg-sky-600 text-white shadow-sm',
+          polarity: () => 'Stark polar · Hydrophil',
+          forces: () => 'Wasserstoffbrücken (Donator & Akzeptor), Keesom-WW',
+          desc: () => 'Durch ΔEN(O–H) ≈ 1,3 stark polarisiert. Bildet stabile Wasserstoffbrücken zu Wasser und anderen Proteingruppen und dient im aktiven Zentrum von Enzymen (Serinproteasen) als Nukleophil.'
+        },
+        thiol: {
+          name: () => 'Thiolgruppe (Sulfhydryl)',
+          formula: () => '–SH',
+          accentHex: '#ca8a04',
+          chipClass: 'chip-yellow border-yellow-200 bg-yellow-50 text-yellow-800',
+          activeChipClass: 'border-yellow-600 bg-yellow-600 text-white shadow-sm',
+          polarity: () => 'Schwach polar · Redoxaktiv',
+          forces: () => 'London-Kräfte, schwache Keesom-WW (kaum WBB), kovalente Disulfidbrücken',
+          desc: () => 'Zwei Thiolgruppen können durch Oxidation kovalente Disulfidbrücken (–S–S–) zu Cystin ausbilden – zentral zur Stabilisierung der Tertiärstruktur von Proteinen (z. B. Keratin, Insulin).'
+        },
+        side_carboxyl: {
+          name: (zw) => zw ? 'β-Carboxylatgruppe' : 'β-Carboxylgruppe',
+          formula: (zw) => zw ? '–COO⁻' : '–COOH',
+          accentHex: '#ea580c',
+          chipClass: 'chip-orange border-orange-200 bg-orange-50 text-orange-800',
+          activeChipClass: 'border-orange-600 bg-orange-600 text-white shadow-sm',
+          polarity: (zw) => zw ? 'Ionisch (negativ geladen)' : 'Stark polar · Sauer (pKs ≈ 3,9)',
+          forces: (zw) => zw ? 'Ionen-WW (Salzbrücken), WBB-Akzeptor' : 'WBB, Keesom-WW',
+          desc: (zw) => zw
+            ? 'Bei pH 7 vollständig deprotoniert (–COO⁻). Asparaginsäure trägt damit eine Nettoladung von –1 (Aspartat) und bildet starke Salzbrücken mit basischen Seitenketten wie Lysin.'
+            : 'Zweite Carboxylgruppe in der Seitenkette (pKs ≈ 3,9). Bewirkt saure Reaktion in Wasser, Pufferwirkung im Sauren und einen niedrigen isoelektrischen Punkt (IEP ≈ 2,77).'
+        },
+        side_amino: {
+          name: (zw) => zw ? 'ε-Ammoniumgruppe' : 'ε-Aminogruppe',
+          formula: (zw) => zw ? '–NH₃⁺' : '–NH₂',
+          accentHex: '#4f46e5',
+          chipClass: 'chip-indigo border-indigo-200 bg-indigo-50 text-indigo-800',
+          activeChipClass: 'border-indigo-600 bg-indigo-600 text-white shadow-sm',
+          polarity: (zw) => zw ? 'Ionisch (positiv geladen)' : 'Polar · Basisch (pKs(BH⁺) ≈ 10,5)',
+          forces: (zw) => zw ? 'Ionen-WW (Salzbrücken), WBB-Donator' : 'WBB, Keesom-WW',
+          desc: (zw) => zw
+            ? 'Bei pH 7 protoniert (–NH₃⁺). Lysin trägt eine positive Nettoladung (+1) und bildet Salzbrücken zu Aspartat/Glutamat oder negativ geladenen DNA-Phosphatgruppen (Histone).'
+            : 'Endständige primäre Aminogruppe mit basischem freien Elektronenpaar (pKs ≈ 10,5). Verleiht Lysin einen hohen isoelektrischen Punkt (IEP ≈ 9,74) und Pufferwirkung im Alkalischen.'
+        }
+      };
+
+      // =========================================================================
+      // 2. EXAKTE 3D-GEOMETRIE: GESTAFFELT (ZICKZACK) & EKLIPTISCHER FISCHER-BOGEN
+      // =========================================================================
+
+      const V = (x, y, z) => new THREE.Vector3(x, y, z);
+      const UP = V(0, 1, 0);
+
+      function getPerp(dir, ref = V(0, 1, 0)) {
+        const u = dir.clone().normalize();
+        let t1 = new THREE.Vector3().crossVectors(ref, u);
+        if (t1.lengthSq() < 1e-5) t1 = new THREE.Vector3().crossVectors(V(1, 0, 0), u);
+        t1.normalize();
+        const t2 = new THREE.Vector3().crossVectors(u, t1).normalize();
+        return { u, t1, t2 };
+      }
+
+      /**
+       * Berechnet eine exakte sp³-Tetraederrichtung (109,47°) ausgehend von `backVec`.
+       */
+      function tetraDir(backVec, refVec, phiDeg) {
+        const u = backVec.clone().normalize();
+        let t1 = refVec.clone().addScaledVector(u, -refVec.dot(u));
+        if (t1.lengthSq() < 1e-6) t1 = getPerp(u).t1;
+        else t1.normalize();
+        const t2 = new THREE.Vector3().crossVectors(u, t1).normalize();
+        const phi = THREE.MathUtils.degToRad(phiDeg);
+        const cosT = -1 / 3;
+        const sinT = (2 * Math.SQRT2) / 3;
+        return u.clone().multiplyScalar(cosT)
+          .addScaledVector(t1, sinT * Math.cos(phi))
+          .addScaledVector(t2, sinT * Math.sin(phi))
+          .normalize();
+      }
+
+      function angleDir(backVec, inPlaneRef, angleDeg) {
+        const u = backVec.clone().normalize();
+        let t1 = inPlaneRef.clone().addScaledVector(u, -inPlaneRef.dot(u));
+        if (t1.lengthSq() < 1e-6) t1 = getPerp(u).t1;
+        else t1.normalize();
+        const rad = THREE.MathUtils.degToRad(angleDeg);
+        return u.clone().multiplyScalar(Math.cos(rad)).addScaledVector(t1, Math.sin(rad)).normalize();
+      }
+
+      /**
+       * Molekül-Builder, der für jede Aminosäure identische Atom-/Bindungs-Indizes
+       * in beiden Konformationen (gestaffelt vs. ekliptischer Fischer-Bogen) erzeugt.
+       */
+      class MolBuilder {
+        constructor(isFischer = false) {
+          this.isFischer = isFischer;
+          this.atoms = [];
+          this.bonds = [];
+          this.rings = [];
+          this.hbondSites = [];
+          this.dipoleSites = [];
+          this.ionicSites = [];
+        }
+
+        addAtom(el, pos, group, opts = {}) {
+          const idx = this.atoms.length;
+          this.atoms.push({
+            idx,
+            el,
+            pos: pos.clone(),
+            group,
+            isChiralCenter: Boolean(opts.isChiralCenter),
+            isAlphaC: Boolean(opts.isAlphaC),
+            charge: opts.charge || 0,
+            partial: opts.partial || null,
+            hydrophobic: Boolean(opts.hydrophobic),
+            sp2PlaneNormal: opts.sp2PlaneNormal ? opts.sp2PlaneNormal.clone().normalize() : null,
+            lonePairMode: opts.lonePairMode || 'auto'
+          });
+          return idx;
+        }
+
+        addBond(a, b, order = 1, planeNormal = null) {
+          this.bonds.push({
+            a,
+            b,
+            order,
+            planeNormal: planeNormal ? planeNormal.clone().normalize() : null
+          });
+        }
+
+        /**
+         * Baut das exakte L-Fischer-Grundgerüst am Cα = (0,0,0):
+         * - C1 (Carboxyl): (0, +1.257, -0.889)  [oben-hinten]
+         * - Richtung R:    (0, -1.257, -0.889)  [unten-hinten]
+         * - Amino-N:       (-1.200, 0, +0.849)  [LINKS-VORNE -> L-Konfiguration]
+         * - Hα:            (+0.890, 0, +0.629)  [RECHTS-VORNE]
+         */
+        addLFischerBackbone({ isZwitterion, isProline = false, isGlycine = false }) {
+          const pCa = V(0, 0, 0);
+          const pCarb = V(0, 1.257, -0.889);
+          const pN = V(-1.200, 0, 0.849);
+          const pH = V(0.890, 0, 0.629);
+          const eR = V(0, -1.257, -0.889).normalize();
+
+          const cAlpha = this.addAtom('C', pCa, 'alpha_c', {
+            isAlphaC: true,
+            isChiralCenter: !isGlycine
+          });
+          const hAlpha = this.addAtom('H', pH, 'alpha_c');
+          this.addBond(cAlpha, hAlpha, 1);
+
+          // --- α-Carboxylgruppe (-COOH) bzw. Carboxylat (-COO⁻) oben-hinten ---
+          const cCarb = this.addAtom('C', pCarb, 'carboxyl', { partial: 'δ+' });
+          this.addBond(cAlpha, cCarb, 1);
+
+          const carbBack = pCa.clone().sub(pCarb).normalize();
+          const carbInPlaneLeft = V(-1, 0, 0);
+          const carbNormal = new THREE.Vector3().crossVectors(carbBack, carbInPlaneLeft).normalize();
+          const dirO1 = angleDir(carbBack, carbInPlaneLeft, 120);
+          const dirO2 = angleDir(carbBack, carbInPlaneLeft.clone().negate(), 120);
+
+          if (isZwitterion) {
+            const o1Pos = pCarb.clone().addScaledVector(dirO1, 1.26);
+            const o2Pos = pCarb.clone().addScaledVector(dirO2, 1.26);
+            const o1 = this.addAtom('O', o1Pos, 'carboxyl', { partial: 'δ−', sp2PlaneNormal: carbNormal, lonePairMode: 'sp2_o' });
+            const o2 = this.addAtom('O', o2Pos, 'carboxyl', { charge: -1, partial: 'δ−', sp2PlaneNormal: carbNormal, lonePairMode: 'carboxylate_o' });
+            this.addBond(cCarb, o1, 1.5, carbNormal);
+            this.addBond(cCarb, o2, 1.5, carbNormal);
+
+            this.hbondSites.push({ atomIdx: o1, type: 'acceptor', dir: dirO1.clone() });
+            this.hbondSites.push({ atomIdx: o2, type: 'acceptor', dir: dirO2.clone() });
+            const ionicDir = dirO1.clone().add(dirO2).normalize();
+            this.ionicSites.push({ atomIdx: cCarb, anchorPos: o1Pos.clone().add(o2Pos).multiplyScalar(0.5), sign: -1, dir: ionicDir });
+          } else {
+            const o1Pos = pCarb.clone().addScaledVector(dirO1, 1.23);
+            const o2Pos = pCarb.clone().addScaledVector(dirO2, 1.35);
+            const o1 = this.addAtom('O', o1Pos, 'carboxyl', { partial: 'δ−', sp2PlaneNormal: carbNormal });
+            const o2 = this.addAtom('O', o2Pos, 'carboxyl', { partial: 'δ−', sp2PlaneNormal: carbNormal });
+            this.addBond(cCarb, o1, 2, carbNormal);
+            this.addBond(cCarb, o2, 1);
+
+            const o2Back = pCarb.clone().sub(o2Pos).normalize();
+            const dirOH = angleDir(o2Back, carbBack.clone().negate(), 109);
+            const hOhPos = o2Pos.clone().addScaledVector(dirOH, 0.97);
+            const hOh = this.addAtom('H', hOhPos, 'carboxyl', { partial: 'δ+' });
+            this.addBond(o2, hOh, 1);
+
+            this.hbondSites.push({ atomIdx: o1, type: 'acceptor', dir: dirO1.clone() });
+            this.hbondSites.push({ atomIdx: hOh, type: 'donor', dir: dirOH.clone() });
+            this.dipoleSites.push({ posIdx: cCarb, negIdx: o1, label: 'C=O' });
+            this.dipoleSites.push({ posIdx: hOh, negIdx: o2, label: 'O–H' });
+          }
+
+          // --- α-Aminogruppe links-vorne ---
+          const aminoGroup = isProline ? 'amino_sec' : 'amino';
+          const nIdx = this.addAtom('N', pN, aminoGroup, {
+            charge: isZwitterion ? 1 : 0,
+            partial: isZwitterion ? null : 'δ−'
+          });
+          this.addBond(cAlpha, nIdx, 1);
+
+          if (!isProline) {
+            const nBack = pCa.clone().sub(pN).normalize();
+            const dH1 = tetraDir(nBack, V(0, 1, 0), 120);
+            const dH2 = tetraDir(nBack, V(0, 1, 0), 240);
+            const dH3 = tetraDir(nBack, V(0, 1, 0), 0);
+
+            const hN1 = this.addAtom('H', pN.clone().addScaledVector(dH1, 1.01), aminoGroup, { partial: 'δ+' });
+            const hN2 = this.addAtom('H', pN.clone().addScaledVector(dH2, 1.01), aminoGroup, { partial: 'δ+' });
+            this.addBond(nIdx, hN1, 1);
+            this.addBond(nIdx, hN2, 1);
+            this.hbondSites.push({ atomIdx: hN1, type: 'donor', dir: dH1.clone() });
+
+            if (isZwitterion) {
+              const hN3 = this.addAtom('H', pN.clone().addScaledVector(dH3, 1.01), aminoGroup, { partial: 'δ+' });
+              this.addBond(nIdx, hN3, 1);
+              this.ionicSites.push({ atomIdx: nIdx, anchorPos: pN.clone(), sign: +1, dir: pN.clone().normalize() });
+            } else {
+              this.hbondSites.push({ atomIdx: nIdx, type: 'acceptor', dir: dH3.clone() });
+              this.dipoleSites.push({ posIdx: hN1, negIdx: nIdx, label: 'N–H' });
+            }
+          }
+
+          if (isGlycine) {
+            const hR = this.addAtom('H', eR.clone().multiplyScalar(1.09), 'alpha_c');
+            this.addBond(cAlpha, hR, 1);
+          }
+
+          return { cAlpha, nIdx, cCarb, eR, pCa, pN };
+        }
+
+        /**
+         * Fügt ein sp³-Kohlenstoffatom an `parentIdx` an.
+         * Berechnet die 3 ausgehenden Tetraederrichtungen exakt (109,47°) relativ zur vorherigen Bindung:
+         * - Im Zickzack-Modus (`isFischer=false`): gestaffelt / trans (phiStart nach Wahl).
+         * - Im Fischer-Bogen-Modus (`isFischer=true`): ekliptisch / syn-periplanar (Diederwinkel ~0°),
+         *   sodass sich die gesamte C-C-Kette ring-/C-bogenförmig nach hinten (-z) vom Betrachter wegkrümmt
+         *   und alle seitlichen H-Atome nach vorne-links / vorne-rechts zum Betrachter zeigen!
+         *
+         * @param {number} grandParentIdx - Vorvorheriges Kettenatom (definiert die Dieder-Referenz für ekliptisch vs. gestaffelt)
+         */
+        addChainSp3(parentIdx, grandParentIdx, dir, length, group, {
+          numH = 2,
+          staggeredPhi = 180,
+          fischerTwistDeg = 0,
+          hydrophobic = true
+        } = {}) {
+          const pPos = this.atoms[parentIdx].pos;
+          const cPos = pPos.clone().addScaledVector(dir.clone().normalize(), length);
+          const cIdx = this.addAtom('C', cPos, group, { hydrophobic });
+          this.addBond(parentIdx, cIdx, 1);
+
+          const back = pPos.clone().sub(cPos).normalize();
+          // Referenzvektor = Richtung von parent -> grandParent!
+          // phi = 0° ergibt exakt syn-periplanar (ekliptisch -> C-Bogen / Ringform!).
+          // phi = 180° ergibt exakt anti-periplanar (gestaffelt -> Zickzack!).
+          const gpPos = this.atoms[grandParentIdx].pos;
+          const refVec = gpPos.clone().sub(pPos).normalize();
+
+          const basePhi = this.isFischer ? fischerTwistDeg : staggeredPhi;
+          const dirs = [
+            tetraDir(back, refVec, basePhi),
+            tetraDir(back, refVec, basePhi + 120),
+            tetraDir(back, refVec, basePhi + 240)
+          ];
+
+          const freeCount = 3 - numH;
+          const freeDirs = dirs.slice(0, freeCount);
+          const hDirs = dirs.slice(freeCount);
+
+          for (const hd of hDirs) {
+            const hIdx = this.addAtom('H', cPos.clone().addScaledVector(hd, 1.09), group, { hydrophobic });
+            this.addBond(cIdx, hIdx, 1);
+          }
+          return { idx: cIdx, pos: cPos, freeDirs };
+        }
+
+        /**
+         * Planarer Benzolring (delokalisierte 1,5-Bindungen).
+         */
+        addBenzeneRing(attachIdx, attachDir, planeNormalRef, group) {
+          const pPos = this.atoms[attachIdx].pos;
+          const u = attachDir.clone().normalize();
+          let n = planeNormalRef.clone().addScaledVector(u, -planeNormalRef.dot(u));
+          if (n.lengthSq() < 1e-6) n = getPerp(u).t1;
+          n.normalize();
+          const v = new THREE.Vector3().crossVectors(n, u).normalize();
+
+          const c1Pos = pPos.clone().addScaledVector(u, 1.51);
+          const side = 1.40;
+          const center = c1Pos.clone().addScaledVector(u, side);
+
+          const ringC = [];
+          for (let k = 0; k < 6; k++) {
+            const theta = Math.PI + (k * Math.PI) / 3;
+            const radial = u.clone().multiplyScalar(Math.cos(theta)).addScaledVector(v, Math.sin(theta));
+            const pos = center.clone().addScaledVector(radial, side);
+            const idx = this.addAtom('C', pos, group, { hydrophobic: true });
+            ringC.push({ idx, pos, radial });
+
+            if (k > 0) {
+              const hIdx = this.addAtom('H', pos.clone().addScaledVector(radial, 1.08), group, { hydrophobic: true });
+              this.addBond(idx, hIdx, 1);
+            }
+          }
+          this.addBond(attachIdx, ringC[0].idx, 1);
+          for (let k = 0; k < 6; k++) {
+            this.addBond(ringC[k].idx, ringC[(k + 1) % 6].idx, 1.5, n);
+          }
+          this.rings.push({ center, normal: n.clone(), radius: 1.05 });
+        }
+
+        /**
+         * Planarer bicyclischer Indolring (Tryptophan).
+         */
+        addIndoleRing(attachIdx, attachDir, planeNormalRef, group) {
+          const pPos = this.atoms[attachIdx].pos;
+          const uDir = attachDir.clone().normalize();
+          let n = planeNormalRef.clone().addScaledVector(uDir, -planeNormalRef.dot(uDir));
+          if (n.lengthSq() < 1e-6) n = getPerp(uDir).t1;
+          n.normalize();
+          const vDir = new THREE.Vector3().crossVectors(n, uDir).normalize();
+
+          const L = 1.40;
+          const hHex = L * Math.cos(Math.PI / 6);
+          const dx5 = L * Math.cos(THREE.MathUtils.degToRad(18));
+          const dy5 = L * Math.sin(THREE.MathUtils.degToRad(18));
+          const xC2 = dx5 + L * Math.cos(THREE.MathUtils.degToRad(54));
+
+          const coords2D = {
+            c3a: [0, 0.70],
+            c7a: [0, -0.70],
+            c4:  [-hHex, 1.40],
+            c5:  [-2 * hHex, 0.70],
+            c6:  [-2 * hHex, -0.70],
+            c7:  [-hHex, -1.40],
+            c3:  [dx5, 0.70 + dy5],
+            n1:  [dx5, -(0.70 + dy5)],
+            c2:  [xC2, 0]
+          };
+          const hexCenter2D = [-hHex, 0];
+          const pentCenter2D = [0.9635, 0];
+
+          const outC3 = [coords2D.c3[0] - pentCenter2D[0], coords2D.c3[1] - pentCenter2D[1]];
+          const outLen = Math.hypot(outC3[0], outC3[1]);
+          const targetAngle = Math.atan2(-outC3[1] / outLen, -outC3[0] / outLen);
+          const cosA = Math.cos(-targetAngle);
+          const sinA = Math.sin(-targetAngle);
+
+          const c3Pos3D = pPos.clone().addScaledVector(uDir, 1.50);
+          const map2D = ([x, y]) => {
+            const rx = x - coords2D.c3[0];
+            const ry = y - coords2D.c3[1];
+            return c3Pos3D.clone()
+              .addScaledVector(uDir, rx * cosA - ry * sinA)
+              .addScaledVector(vDir, rx * sinA + ry * cosA);
+          };
+          const mapDir2D = ([dx, dy]) => {
+            const len = Math.hypot(dx, dy);
+            const ux = dx / len, uy = dy / len;
+            return uDir.clone().multiplyScalar(ux * cosA - uy * sinA)
+              .addScaledVector(vDir, ux * sinA + uy * cosA).normalize();
+          };
+
+          const ids = {};
+          for (const [key, pt] of Object.entries(coords2D)) {
+            const isN = key === 'n1';
+            ids[key] = this.addAtom(isN ? 'N' : 'C', map2D(pt), group, {
+              hydrophobic: !isN,
+              partial: isN ? 'δ−' : null,
+              sp2PlaneNormal: isN ? n : null,
+              lonePairMode: isN ? 'aromatic_n' : 'auto'
+            });
+          }
+          this.addBond(attachIdx, ids.c3, 1);
+
+          this.addBond(ids.c3a, ids.c7a, 1.5, n);
+          this.addBond(ids.c3a, ids.c4, 1.5, n);
+          this.addBond(ids.c4, ids.c5, 1.5, n);
+          this.addBond(ids.c5, ids.c6, 1.5, n);
+          this.addBond(ids.c6, ids.c7, 1.5, n);
+          this.addBond(ids.c7, ids.c7a, 1.5, n);
+          this.addBond(ids.c3a, ids.c3, 1, n);
+          this.addBond(ids.c3, ids.c2, 2, n);
+          this.addBond(ids.c2, ids.n1, 1, n);
+          this.addBond(ids.n1, ids.c7a, 1, n);
+
+          for (const key of ['c4', 'c5', 'c6', 'c7']) {
+            const dir = mapDir2D([coords2D[key][0] - hexCenter2D[0], coords2D[key][1] - hexCenter2D[1]]);
+            const hIdx = this.addAtom('H', this.atoms[ids[key]].pos.clone().addScaledVector(dir, 1.08), group, { hydrophobic: true });
+            this.addBond(ids[key], hIdx, 1);
+          }
+          const dirC2H = mapDir2D([coords2D.c2[0] - pentCenter2D[0], coords2D.c2[1] - pentCenter2D[1]]);
+          const hC2 = this.addAtom('H', this.atoms[ids.c2].pos.clone().addScaledVector(dirC2H, 1.08), group, { hydrophobic: true });
+          this.addBond(ids.c2, hC2, 1);
+
+          const dirN1H = mapDir2D([coords2D.n1[0] - pentCenter2D[0], coords2D.n1[1] - pentCenter2D[1]]);
+          const hN1 = this.addAtom('H', this.atoms[ids.n1].pos.clone().addScaledVector(dirN1H, 1.01), group, { partial: 'δ+' });
+          this.addBond(ids.n1, hN1, 1);
+          this.hbondSites.push({ atomIdx: hN1, type: 'donor', dir: dirN1H.clone() });
+          this.dipoleSites.push({ posIdx: hN1, negIdx: ids.n1, label: 'N–H' });
+
+          this.rings.push({ center: map2D(hexCenter2D), normal: n.clone(), radius: 1.02 });
+          this.rings.push({ center: map2D(pentCenter2D), normal: n.clone(), radius: 0.78 });
+        }
+      }
+
+      // =========================================================================
+      // 3. DIE 11 L-AMINOSÄUREN (GESTAFFELT + EKLIPTISCHER FISCHER-BOGEN)
+      // =========================================================================
+
+      const AMINO_ACIDS = [
+        // --- UNPOLAR / ALIPHATISCH ---
+        {
+          id: 'gly',
+          displayName: 'Glycin (achiral)',
+          code3: 'Gly',
+          code1: 'G',
+          category: 'unpolar',
+          sideShort: 'R = –H',
+          formulaNeutral: 'C<sub>2</sub>H<sub>5</sub>NO<sub>2</sub>',
+          formulaZwitter: 'C<sub>2</sub>H<sub>5</sub>NO<sub>2</sub>',
+          mass: '75,07 g/mol',
+          iep: '5,97',
+          summary: 'Einzige achirale proteinogene Aminosäure. Durch das winzige H-Atom als Seitenkette erlaubt Glycin enge Schleifen und hohe Flexibilität in Proteinen (z. B. Kollagen).',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            b.addLFischerBackbone({ isZwitterion: isZw, isGlycine: true });
+            return b;
+          }
+        },
+        {
+          id: 'ala',
+          displayName: 'L-Alanin',
+          code3: 'Ala',
+          code1: 'A',
+          category: 'unpolar',
+          sideShort: 'R = –CH₃',
+          formulaNeutral: 'C<sub>3</sub>H<sub>7</sub>NO<sub>2</sub>',
+          formulaZwitter: 'C<sub>3</sub>H<sub>7</sub>NO<sub>2</sub>',
+          mass: '89,09 g/mol',
+          iep: '6,00',
+          summary: 'Standard-Referenz für chirale L-Aminosäuren. Die unpolare Methylgruppe vermittelt schwache London-Kräfte ohne sterische Hinderung.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            // Im Fischer-Bogen: 1 H zeigt ekliptisch nach hinten (-z), 2 H nach links-/rechts-vorne
+            b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 3, staggeredPhi: 180, fischerTwistDeg: 0 });
+            return b;
+          }
+        },
+        {
+          id: 'leu',
+          displayName: 'L-Leucin',
+          code3: 'Leu',
+          code1: 'L',
+          category: 'unpolar',
+          sideShort: 'R = –CH₂–CH(CH₃)₂',
+          formulaNeutral: 'C<sub>6</sub>H<sub>13</sub>NO<sub>2</sub>',
+          formulaZwitter: 'C<sub>6</sub>H<sub>13</sub>NO<sub>2</sub>',
+          mass: '131,17 g/mol',
+          iep: '5,98',
+          summary: 'Essenzielle, stark hydrophobe Aminosäure mit verzweigter Isobutyl-Seitenkette. Stabilisiert das Proteininnere durch London-Wechselwirkungen (z. B. Leucin-Zipper).',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            // Cα -> Cβ -> Cγ -> Cδ1/Cδ2: im Fischer-Modus ekliptisch nach hinten gekrümmt!
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0 });
+            const cg = b.addChainSp3(cb.idx, cAlpha, cb.freeDirs[0], 1.54, 'alkyl', { numH: 1, staggeredPhi: 120, fischerTwistDeg: -60 });
+            b.addChainSp3(cg.idx, cb.idx, cg.freeDirs[0], 1.54, 'alkyl', { numH: 3, staggeredPhi: 180, fischerTwistDeg: 0 });
+            b.addChainSp3(cg.idx, cb.idx, cg.freeDirs[1], 1.54, 'alkyl', { numH: 3, staggeredPhi: 180, fischerTwistDeg: 0 });
+            return b;
+          }
+        },
+        {
+          id: 'met',
+          displayName: 'L-Methionin',
+          code3: 'Met',
+          code1: 'M',
+          category: 'unpolar',
+          sideShort: 'R = –(CH₂)₂–S–CH₃',
+          formulaNeutral: 'C<sub>5</sub>H<sub>11</sub>NO<sub>2</sub>S',
+          formulaZwitter: 'C<sub>5</sub>H<sub>11</sub>NO<sub>2</sub>S',
+          mass: '149,21 g/mol',
+          iep: '5,74',
+          summary: 'Schwefelhaltige Start-Aminosäure der Translation (Codon AUG). Die Thioethergruppe ist gut polarisierbar (London-Kräfte), aber nicht zur Disulfidbrücken-Bildung fähig.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'thioether', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0 });
+            const cg = b.addChainSp3(cb.idx, cAlpha, cb.freeDirs[0], 1.54, 'thioether', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 18 });
+            const sPos = cg.pos.clone().addScaledVector(cg.freeDirs[0], 1.82);
+            const sIdx = b.addAtom('S', sPos, 'thioether', { hydrophobic: true, partial: 'δ−' });
+            b.addBond(cg.idx, sIdx, 1);
+
+            const sBack = cg.pos.clone().sub(sPos).normalize();
+            const sRef = isFischer
+              ? cb.pos.clone().sub(cg.pos).normalize()
+              : cg.pos.clone().sub(cb.pos).normalize();
+            const dirMe = angleDir(sBack, sRef, 100.5);
+            b.addChainSp3(sIdx, cg.idx, dirMe, 1.81, 'thioether', { numH: 3, staggeredPhi: 180, fischerTwistDeg: 0 });
+            b.dipoleSites.push({ posIdx: cg.idx, negIdx: sIdx, label: 'C–S' });
+            return b;
+          }
+        },
+        {
+          id: 'pro',
+          displayName: 'L-Prolin',
+          code3: 'Pro',
+          code1: 'P',
+          category: 'unpolar',
+          sideShort: 'Zykl. Pyrrolidinring',
+          formulaNeutral: 'C<sub>5</sub>H<sub>9</sub>NO<sub>2</sub>',
+          formulaZwitter: 'C<sub>5</sub>H<sub>9</sub>NO<sub>2</sub>',
+          mass: '115,13 g/mol',
+          iep: '6,30',
+          summary: 'Einzige proteinogene Aminosäure mit sekundärer Aminogruppe im 5-gliedrigen Pyrrolidinring. Die starre Ringgeometrie wirkt in α-Helices als „Helixbrecher“.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, nIdx, eR, pCa, pN } = b.addLFischerBackbone({ isZwitterion: isZw, isProline: true });
+
+            const pCb = eR.clone().multiplyScalar(1.54);
+            const mid = pCb.clone().add(pN).multiplyScalar(0.5);
+            const w = mid.clone().sub(pCa).normalize();
+            const s = pCb.clone().sub(pN).normalize();
+            const nPlane = new THREE.Vector3().crossVectors(s, w).normalize();
+
+            // Im Fischer-Modus klappt der Envelope-Knick leicht nach hinten weg (-z)
+            const pucker = isFischer ? -0.26 : 0.28;
+            const pCg = mid.clone().addScaledVector(s, 0.74).addScaledVector(w, 1.41).addScaledVector(nPlane, pucker);
+            const pCd = mid.clone().addScaledVector(s, -0.74).addScaledVector(w, 1.42).addScaledVector(nPlane, -pucker * 0.15);
+
+            const cb = b.addAtom('C', pCb, 'pyrrolidine', { hydrophobic: true });
+            const cg = b.addAtom('C', pCg, 'pyrrolidine', { hydrophobic: true });
+            const cd = b.addAtom('C', pCd, 'pyrrolidine', { hydrophobic: true });
+
+            b.addBond(cAlpha, cb, 1);
+            b.addBond(cb, cg, 1);
+            b.addBond(cg, cd, 1);
+            b.addBond(cd, nIdx, 1);
+
+            const addRingPair = (cIdx, prevIdx, nextIdx, group, count = 2, opts = {}) => {
+              const cPos = b.atoms[cIdx].pos;
+              const u1 = b.atoms[prevIdx].pos.clone().sub(cPos).normalize();
+              const u2 = b.atoms[nextIdx].pos.clone().sub(cPos).normalize();
+              const bisectOut = u1.clone().add(u2).negate().normalize();
+              const perp = new THREE.Vector3().crossVectors(u1, u2).normalize();
+              const c54 = Math.cos(THREE.MathUtils.degToRad(54.7));
+              const s54 = Math.sin(THREE.MathUtils.degToRad(54.7));
+              const d1 = bisectOut.clone().multiplyScalar(c54).addScaledVector(perp, s54).normalize();
+              const d2 = bisectOut.clone().multiplyScalar(c54).addScaledVector(perp, -s54).normalize();
+              const len = opts.len || 1.09;
+
+              const h1 = b.addAtom('H', cPos.clone().addScaledVector(d1, len), group, opts);
+              b.addBond(cIdx, h1, 1);
+              if (count === 2) {
+                const h2 = b.addAtom('H', cPos.clone().addScaledVector(d2, len), group, opts);
+                b.addBond(cIdx, h2, 1);
+                return { d1, d2, h1, h2 };
+              }
+              return { d1, d2, h1 };
+            };
+
+            addRingPair(cb, cAlpha, cg, 'pyrrolidine', 2, { hydrophobic: true });
+            addRingPair(cg, cb, cd, 'pyrrolidine', 2, { hydrophobic: true });
+            addRingPair(cd, cg, nIdx, 'pyrrolidine', 2, { hydrophobic: true });
+
+            const nRes = addRingPair(nIdx, cd, cAlpha, 'amino_sec', isZw ? 2 : 1, { len: 1.01, partial: 'δ+' });
+            b.hbondSites.push({ atomIdx: nRes.h1, type: 'donor', dir: nRes.d1.clone() });
+            if (isZw) {
+              b.ionicSites.push({ atomIdx: nIdx, anchorPos: pN.clone(), sign: +1, dir: nRes.d1.clone().add(nRes.d2).normalize() });
+            } else {
+              b.hbondSites.push({ atomIdx: nIdx, type: 'acceptor', dir: nRes.d2.clone() });
+              b.dipoleSites.push({ posIdx: nRes.h1, negIdx: nIdx, label: 'N–H' });
+            }
+            return b;
+          }
+        },
+
+        // --- AROMATISCH ---
+        {
+          id: 'phe',
+          displayName: 'L-Phenylalanin',
+          code3: 'Phe',
+          code1: 'F',
+          category: 'aromatisch',
+          sideShort: 'R = –CH₂–C₆H₅',
+          formulaNeutral: 'C<sub>9</sub>H<sub>11</sub>NO<sub>2</sub>',
+          formulaZwitter: 'C<sub>9</sub>H<sub>11</sub>NO<sub>2</sub>',
+          mass: '165,19 g/mol',
+          iep: '5,48',
+          summary: 'Stark hydrophobe, aromatische Aminosäure. Der planare Benzolring ermöglicht ausgeprägte London-Kräfte und π-π-Stacking zwischen aromatischen Seitenketten.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0 });
+            b.addBenzeneRing(cb.idx, cb.freeDirs[0], isFischer ? V(0, 0.9, 0.4) : V(0.22, 0.15, 0.96), 'benzene');
+            return b;
+          }
+        },
+        {
+          id: 'trp',
+          displayName: 'L-Tryptophan',
+          code3: 'Trp',
+          code1: 'W',
+          category: 'aromatisch',
+          sideShort: 'R = –CH₂–Indol',
+          formulaNeutral: 'C<sub>11</sub>H<sub>12</sub>N<sub>2</sub>O<sub>2</sub>',
+          formulaZwitter: 'C<sub>11</sub>H<sub>12</sub>N<sub>2</sub>O<sub>2</sub>',
+          mass: '204,23 g/mol',
+          iep: '5,89',
+          summary: 'Größte proteinogene Aminosäure mit planarem, bicyclischem Indolring. Kombiniert starke London-Kräfte (10-π-Elektronen-System) mit einer N–H-WBB-Donatorgruppe.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0 });
+            b.addIndoleRing(cb.idx, cb.freeDirs[0], isFischer ? V(0.1, 0.92, 0.35) : V(0.18, 0.12, 0.97), 'indole');
+            return b;
+          }
+        },
+
+        // --- POLAR UNGELADEN ---
+        {
+          id: 'ser',
+          displayName: 'L-Serin',
+          code3: 'Ser',
+          code1: 'S',
+          category: 'polar',
+          sideShort: 'R = –CH₂–OH',
+          formulaNeutral: 'C<sub>3</sub>H<sub>7</sub>NO<sub>3</sub>',
+          formulaZwitter: 'C<sub>3</sub>H<sub>7</sub>NO<sub>3</sub>',
+          mass: '105,09 g/mol',
+          iep: '5,68',
+          summary: 'Hydrophile Aminosäure mit polarer Hydroxygruppe (–OH). Bildet starke Wasserstoffbrücken und ist ein zentrales Nukleophil in Enzymen sowie Ziel für Phosphorylierungen.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0, hydrophobic: false });
+            const oPos = cb.pos.clone().addScaledVector(cb.freeDirs[0], 1.43);
+            const oIdx = b.addAtom('O', oPos, 'hydroxyl', { partial: 'δ−' });
+            b.addBond(cb.idx, oIdx, 1);
+
+            const oBack = cb.pos.clone().sub(oPos).normalize();
+            const dirOH = angleDir(oBack, V(1, -0.3, 0.4), 108.5);
+            const hIdx = b.addAtom('H', oPos.clone().addScaledVector(dirOH, 0.97), 'hydroxyl', { partial: 'δ+' });
+            b.addBond(oIdx, hIdx, 1);
+
+            b.hbondSites.push({ atomIdx: hIdx, type: 'donor', dir: dirOH.clone() });
+            b.dipoleSites.push({ posIdx: hIdx, negIdx: oIdx, label: 'O–H' });
+            return b;
+          }
+        },
+        {
+          id: 'cys',
+          displayName: 'L-Cystein',
+          code3: 'Cys',
+          code1: 'C',
+          category: 'polar',
+          sideShort: 'R = –CH₂–SH',
+          formulaNeutral: 'C<sub>3</sub>H<sub>7</sub>NO<sub>2</sub>S',
+          formulaZwitter: 'C<sub>3</sub>H<sub>7</sub>NO<sub>2</sub>S',
+          mass: '121,16 g/mol',
+          iep: '5,07',
+          summary: 'Trägt eine redoxaktive Thiolgruppe (–SH) zur Bildung kovalenter Disulfidbrücken (–S–S–). CIP-Ausnahme: L-Cystein besitzt wegen des Schwefels die (R)-Konfiguration!',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0, hydrophobic: false });
+            const sPos = cb.pos.clone().addScaledVector(cb.freeDirs[0], 1.82);
+            const sIdx = b.addAtom('S', sPos, 'thiol', { partial: 'δ−' });
+            b.addBond(cb.idx, sIdx, 1);
+
+            const sBack = cb.pos.clone().sub(sPos).normalize();
+            const dirSH = angleDir(sBack, V(1, -0.3, 0.4), 97);
+            const hIdx = b.addAtom('H', sPos.clone().addScaledVector(dirSH, 1.34), 'thiol', { partial: 'δ+' });
+            b.addBond(sIdx, hIdx, 1);
+
+            b.dipoleSites.push({ posIdx: hIdx, negIdx: sIdx, label: 'S–H' });
+            return b;
+          }
+        },
+
+        // --- SAUER ---
+        {
+          id: 'asp',
+          displayName: 'L-Asparaginsäure',
+          code3: 'Asp',
+          code1: 'D',
+          category: 'sauer',
+          sideShort: 'R = –CH₂–COOH',
+          formulaNeutral: 'C<sub>4</sub>H<sub>7</sub>NO<sub>4</sub>',
+          formulaZwitter: 'C<sub>4</sub>H<sub>6</sub>NO<sub>4</sub><sup>−</sup>',
+          mass: '133,10 g/mol',
+          iep: '2,77',
+          summary: 'Saure Aminosäure mit β-Carboxylgruppe (pKs ≈ 3,9). Bei pH 7 einfach negativ geladen (Aspartat) – wichtig für Salzbrücken und Säure-Base-Katalyse.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0, hydrophobic: false });
+
+            const cgPos = cb.pos.clone().addScaledVector(cb.freeDirs[0], 1.52);
+            const cg = b.addAtom('C', cgPos, 'side_carboxyl', { partial: 'δ+' });
+            b.addBond(cb.idx, cg, 1);
+
+            const back = cb.pos.clone().sub(cgPos).normalize();
+            const inPlane = V(-1, 0, 0.15).normalize();
+            const normal = new THREE.Vector3().crossVectors(back, inPlane).normalize();
+            const dO1 = angleDir(back, inPlane, 120);
+            const dO2 = angleDir(back, inPlane.clone().negate(), 120);
+
+            if (isZw) {
+              const o1Pos = cgPos.clone().addScaledVector(dO1, 1.26);
+              const o2Pos = cgPos.clone().addScaledVector(dO2, 1.26);
+              const o1 = b.addAtom('O', o1Pos, 'side_carboxyl', { partial: 'δ−', sp2PlaneNormal: normal, lonePairMode: 'sp2_o' });
+              const o2 = b.addAtom('O', o2Pos, 'side_carboxyl', { charge: -1, partial: 'δ−', sp2PlaneNormal: normal, lonePairMode: 'carboxylate_o' });
+              b.addBond(cg, o1, 1.5, normal);
+              b.addBond(cg, o2, 1.5, normal);
+              b.hbondSites.push({ atomIdx: o1, type: 'acceptor', dir: dO1.clone() });
+              b.ionicSites.push({ atomIdx: cg, anchorPos: o1Pos.clone().add(o2Pos).multiplyScalar(0.5), sign: -1, dir: dO1.clone().add(dO2).normalize() });
+            } else {
+              const o1Pos = cgPos.clone().addScaledVector(dO1, 1.23);
+              const o2Pos = cgPos.clone().addScaledVector(dO2, 1.35);
+              const o1 = b.addAtom('O', o1Pos, 'side_carboxyl', { partial: 'δ−', sp2PlaneNormal: normal });
+              const o2 = b.addAtom('O', o2Pos, 'side_carboxyl', { partial: 'δ−', sp2PlaneNormal: normal });
+              b.addBond(cg, o1, 2, normal);
+              b.addBond(cg, o2, 1);
+
+              const o2Back = cgPos.clone().sub(o2Pos).normalize();
+              const dirOH = angleDir(o2Back, dO1, 109);
+              const hIdx = b.addAtom('H', o2Pos.clone().addScaledVector(dirOH, 0.97), 'side_carboxyl', { partial: 'δ+' });
+              b.addBond(o2, hIdx, 1);
+
+              b.hbondSites.push({ atomIdx: o1, type: 'acceptor', dir: dO1.clone() });
+              b.hbondSites.push({ atomIdx: hIdx, type: 'donor', dir: dirOH.clone() });
+              b.dipoleSites.push({ posIdx: cg, negIdx: o1, label: 'C=O' });
+              b.dipoleSites.push({ posIdx: hIdx, negIdx: o2, label: 'O–H' });
+            }
+            return b;
+          }
+        },
+
+        // --- BASISCH ---
+        {
+          id: 'lys',
+          displayName: 'L-Lysin',
+          code3: 'Lys',
+          code1: 'K',
+          category: 'basisch',
+          sideShort: 'R = –(CH₂)₄–NH₂',
+          formulaNeutral: 'C<sub>6</sub>H<sub>14</sub>N<sub>2</sub>O<sub>2</sub>',
+          formulaZwitter: 'C<sub>6</sub>H<sub>15</sub>N<sub>2</sub>O<sub>2</sub><sup>+</sup>',
+          mass: '146,19 g/mol',
+          iep: '9,74',
+          summary: 'Essenzielle, basische Aminosäure mit langer C₄-Kette und endständiger ε-Aminogruppe (pKs ≈ 10,5). Bei pH 7 positiv geladen (+1) – zentral für Salzbrücken.',
+          build(isZw, isFischer) {
+            const b = new MolBuilder(isFischer);
+            const { cAlpha, cCarb, eR } = b.addLFischerBackbone({ isZwitterion: isZw });
+            // Im Fischer-Bogen: Cα -> Cβ -> Cγ -> Cδ -> Cε krümmt sich als echte ekliptische Ring-/C-Bogen-Kette nach hinten!
+            // Ein sanfter Dieder-Versatz (22°) ab Cγ verhindert sterische Kollision mit C1 bei exaktem 109,5°-Bindungswinkel.
+            const cb = b.addChainSp3(cAlpha, cCarb, eR, 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 0 });
+            const cg = b.addChainSp3(cb.idx, cAlpha, cb.freeDirs[0], 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 22 });
+            const cd = b.addChainSp3(cg.idx, cb.idx, cg.freeDirs[0], 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 22 });
+            const ce = b.addChainSp3(cd.idx, cg.idx, cd.freeDirs[0], 1.54, 'alkyl', { numH: 2, staggeredPhi: 180, fischerTwistDeg: 22 });
+
+            const nPos = ce.pos.clone().addScaledVector(ce.freeDirs[0], 1.47);
+            const nIdx = b.addAtom('N', nPos, 'side_amino', {
+              charge: isZw ? 1 : 0,
+              partial: isZw ? null : 'δ−'
+            });
+            b.addBond(ce.idx, nIdx, 1);
+
+            const nBack = ce.pos.clone().sub(nPos).normalize();
+            const nRef = cd.pos.clone().sub(ce.pos).normalize();
+            const d1 = tetraDir(nBack, nRef, 0);
+            const d2 = tetraDir(nBack, nRef, 120);
+            const d3 = tetraDir(nBack, nRef, 240);
+
+            const h1 = b.addAtom('H', nPos.clone().addScaledVector(d1, 1.01), 'side_amino', { partial: 'δ+' });
+            const h2 = b.addAtom('H', nPos.clone().addScaledVector(d2, 1.01), 'side_amino', { partial: 'δ+' });
+            b.addBond(nIdx, h1, 1);
+            b.addBond(nIdx, h2, 1);
+            b.hbondSites.push({ atomIdx: h1, type: 'donor', dir: d1.clone() });
+
+            if (isZw) {
+              const h3 = b.addAtom('H', nPos.clone().addScaledVector(d3, 1.01), 'side_amino', { partial: 'δ+' });
+              b.addBond(nIdx, h3, 1);
+              b.ionicSites.push({ atomIdx: nIdx, anchorPos: nPos.clone(), sign: +1, dir: nBack.clone().negate() });
+            } else {
+              b.hbondSites.push({ atomIdx: nIdx, type: 'acceptor', dir: d3.clone() });
+              b.dipoleSites.push({ posIdx: h1, negIdx: nIdx, label: 'N–H' });
+            }
+            return b;
+          }
+        }
+      ];
+
+      // =========================================================================
+      // 4. INTERAKTIVE 2D-SKELETTFORMEL (TAG- & NACHTMODUS-TAUGLICHES SVG)
+      // =========================================================================
+
+      function renderSkeletalSVG(aaId, isZw, selectedGroup, isDark) {
+        const gColor = (gid) => (GROUP_META[gid] ? GROUP_META[gid].accentHex : '#3b82f6');
+        const gState = (gid) => (!selectedGroup ? '' : (selectedGroup === gid ? 'is-active' : 'is-dimmed'));
+
+        const baseStroke = isDark ? '#e2e8f0' : '#1e293b';
+        const redAtom = isDark ? '#f87171' : '#dc2626';
+        const blueAtom = isDark ? '#60a5fa' : '#2563eb';
+        const sulfurAtom = isDark ? '#facc15' : '#ca8a04';
+        const alphaMuted = isDark ? '#94a3b8' : '#64748b';
+
+        const strokeFor = (gid) => (selectedGroup === gid ? gColor(gid) : baseStroke);
+
+        const carbStroke = strokeFor('carboxyl');
+        const carbOColor = selectedGroup === 'carboxyl' ? gColor('carboxyl') : redAtom;
+        const aminoGroup = aaId === 'pro' ? 'amino_sec' : 'amino';
+        const aminoColor = selectedGroup === aminoGroup ? gColor(aminoGroup) : blueAtom;
+        const alphaColor = strokeFor('alpha_c');
+
+        const carboxylSVG = `
+          <g class="svg-group ${gState('carboxyl')}" data-group="carboxyl" style="--group-color:${gColor('carboxyl')}">
+            <path class="svg-hit" d="M76 26 L110 44 L144 26 M110 44 L110 64" />
+            <g class="svg-vis">
+              <line x1="110" y1="44" x2="110" y2="78" stroke="${carbStroke}" stroke-width="2.2" stroke-linecap="round" />
+              <line x1="108" y1="47" x2="83" y2="32" stroke="${carbStroke}" stroke-width="2" stroke-linecap="round" />
+              <line x1="112" y1="41" x2="87" y2="26" stroke="${carbStroke}" stroke-width="2" stroke-linecap="round" />
+              <line x1="110" y1="44" x2="136" y2="29" stroke="${carbStroke}" stroke-width="2.2" stroke-linecap="round" />
+              ${isZw ? `<line x1="114" y1="47" x2="136" y2="34" stroke="${carbStroke}" stroke-width="1.4" stroke-dasharray="3 2.5" stroke-linecap="round" />` : ''}
+              <text x="72" y="30" text-anchor="middle" font-size="13.5" font-weight="700" fill="${carbOColor}">O</text>
+              <text x="148" y="30" text-anchor="start" font-size="13.5" font-weight="700" fill="${carbOColor}">${isZw ? 'O⁻' : 'OH'}</text>
+            </g>
+          </g>
+        `;
+
+        const alphaSVG = `
+          <g class="svg-group ${gState('alpha_c')}" data-group="alpha_c" style="--group-color:${gColor('alpha_c')}">
+            <circle class="svg-hit" cx="110" cy="78" r="14" />
+            <g class="svg-vis">
+              <circle cx="110" cy="78" r="${selectedGroup === 'alpha_c' ? 4.5 : 2.6}" fill="${selectedGroup === 'alpha_c' ? gColor('alpha_c') : baseStroke}" />
+              ${aaId !== 'gly' ? `<text x="121" y="81" font-size="9.5" font-weight="700" fill="${selectedGroup === 'alpha_c' ? gColor('alpha_c') : alphaMuted}">α</text>` : ''}
+            </g>
+          </g>
+        `;
+
+        let aminoSVG = '';
+        if (aaId !== 'pro') {
+          aminoSVG = `
+            <g class="svg-group ${gState('amino')}" data-group="amino" style="--group-color:${gColor('amino')}">
+              <path class="svg-hit" d="M52 78 L110 78" />
+              <g class="svg-vis">
+                <polygon points="110,78 79,73 79,83" fill="${aminoColor}" />
+                <text x="75" y="83" text-anchor="end" font-size="13" font-weight="700" fill="${aminoColor}">
+                  ${isZw ? '⁺H₃N' : 'H₂N'}
+                </text>
+              </g>
+            </g>
+          `;
+        } else {
+          aminoSVG = `
+            <g class="svg-group ${gState('amino_sec')}" data-group="amino_sec" style="--group-color:${gColor('amino_sec')}">
+              <circle class="svg-hit" cx="76" cy="96" r="16" />
+              <g class="svg-vis">
+                <polygon points="110,78 82,89 86,97" fill="${aminoColor}" />
+                <text x="73" y="102" text-anchor="end" font-size="13" font-weight="700" fill="${aminoColor}">
+                  ${isZw ? '⁺H₂N' : 'HN'}
+                </text>
+              </g>
+            </g>
+          `;
+        }
+
+        let sideSVG = '';
+        const akStroke = strokeFor('alkyl');
+
+        switch (aaId) {
+          case 'gly':
+            sideSVG = `
+              <g class="svg-group ${gState('alpha_c')}" data-group="alpha_c" style="--group-color:${gColor('alpha_c')}">
+                <path class="svg-hit" d="M110 78 L110 112" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="106" stroke="${alphaColor}" stroke-width="2" stroke-linecap="round" />
+                  <text x="110" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="${alphaColor}">H</text>
+                </g>
+              </g>
+            `;
+            break;
+
+          case 'ala':
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 120" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="114" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                  <text x="110" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="${akStroke}">CH₃</text>
+                </g>
+              </g>
+            `;
+            break;
+
+          case 'leu':
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 112 L84 134 L84 166 M84 134 L118 156" />
+                <g class="svg-vis">
+                  <polyline points="110,78 110,112 88,136 88,170" fill="none" stroke="${akStroke}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+                  <line x1="88" y1="136" x2="122" y2="156" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                </g>
+              </g>
+            `;
+            break;
+
+          case 'met': {
+            const thStroke = strokeFor('thioether');
+            const sCol = selectedGroup === 'thioether' ? gColor('thioether') : sulfurAtom;
+            sideSVG = `
+              <g class="svg-group ${gState('thioether')}" data-group="thioether" style="--group-color:${gColor('thioether')}">
+                <path class="svg-hit" d="M110 78 L110 110 L84 128 L84 160 L114 176" />
+                <g class="svg-vis">
+                  <polyline points="110,78 110,110 84,128 84,151" fill="none" stroke="${thStroke}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+                  <line x1="92" y1="164" x2="118" y2="178" stroke="${thStroke}" stroke-width="2.2" stroke-linecap="round" />
+                  <text x="84" y="164" text-anchor="middle" font-size="13.5" font-weight="800" fill="${sCol}">S</text>
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'pro': {
+            const pStroke = strokeFor('pyrrolidine');
+            sideSVG = `
+              <g class="svg-group ${gState('pyrrolidine')}" data-group="pyrrolidine" style="--group-color:${gColor('pyrrolidine')}">
+                <path class="svg-hit" d="M110 78 L126 112 L100 136 L74 114 L78 98" />
+                <g class="svg-vis">
+                  <polyline points="110,78 124,114 96,136 72,118 76,105" fill="none" stroke="${pStroke}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'phe': {
+            const bStroke = strokeFor('benzene');
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 108" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="108" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                </g>
+              </g>
+              <g class="svg-group ${gState('benzene')}" data-group="benzene" style="--group-color:${gColor('benzene')}">
+                <polygon class="svg-hit" points="110,108 136,123 136,153 110,168 84,153 84,123" />
+                <g class="svg-vis">
+                  <polygon points="110,108 136,123 136,153 110,168 84,153 84,123" fill="none" stroke="${bStroke}" stroke-width="2.2" stroke-linejoin="round" />
+                  <circle cx="110" cy="138" r="16" fill="none" stroke="${bStroke}" stroke-width="1.6" stroke-dasharray="4 2.5" />
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'trp': {
+            const iStroke = strokeFor('indole');
+            const nCol = selectedGroup === 'indole' ? gColor('indole') : blueAtom;
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 104" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="104" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                </g>
+              </g>
+              <g class="svg-group ${gState('indole')}" data-group="indole" style="--group-color:${gColor('indole')}">
+                <polygon class="svg-hit" points="110,104 138,116 146,144 126,172 96,178 72,162 72,134 94,120" />
+                <g class="svg-vis">
+                  <polygon points="70,136 94,122 118,136 118,164 94,178 70,164" fill="none" stroke="${iStroke}" stroke-width="2.1" stroke-linejoin="round" />
+                  <circle cx="94" cy="150" r="13.5" fill="none" stroke="${iStroke}" stroke-width="1.5" stroke-dasharray="3.5 2.2" />
+                  <polyline points="118,136 144,128 158,150 144,172 118,164" fill="none" stroke="${iStroke}" stroke-width="2.1" stroke-linejoin="round" />
+                  <line x1="110" y1="104" x2="144" y2="128" stroke="${iStroke}" stroke-width="2.1" stroke-linecap="round" />
+                  <line x1="142" y1="133" x2="152" y2="149" stroke="${iStroke}" stroke-width="1.7" stroke-linecap="round" />
+                  <text x="148" y="185" text-anchor="middle" font-size="11.5" font-weight="700" fill="${nCol}">NH</text>
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'ser': {
+            const ohCol = selectedGroup === 'hydroxyl' ? gColor('hydroxyl') : redAtom;
+            const ohStroke = strokeFor('hydroxyl');
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 112" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="112" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                </g>
+              </g>
+              <g class="svg-group ${gState('hydroxyl')}" data-group="hydroxyl" style="--group-color:${gColor('hydroxyl')}">
+                <path class="svg-hit" d="M110 112 L138 130" />
+                <g class="svg-vis">
+                  <line x1="110" y1="112" x2="134" y2="127" stroke="${ohStroke}" stroke-width="2.2" stroke-linecap="round" />
+                  <text x="138" y="135" text-anchor="start" font-size="13.5" font-weight="700" fill="${ohCol}">OH</text>
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'cys': {
+            const shCol = selectedGroup === 'thiol' ? gColor('thiol') : sulfurAtom;
+            const shStroke = strokeFor('thiol');
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 112" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="112" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                </g>
+              </g>
+              <g class="svg-group ${gState('thiol')}" data-group="thiol" style="--group-color:${gColor('thiol')}">
+                <path class="svg-hit" d="M110 112 L138 130" />
+                <g class="svg-vis">
+                  <line x1="110" y1="112" x2="134" y2="127" stroke="${shStroke}" stroke-width="2.2" stroke-linecap="round" />
+                  <text x="138" y="135" text-anchor="start" font-size="13.5" font-weight="800" fill="${shCol}">SH</text>
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'asp': {
+            const scStroke = strokeFor('side_carboxyl');
+            const scO = selectedGroup === 'side_carboxyl' ? gColor('side_carboxyl') : redAtom;
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 112" />
+                <g class="svg-vis">
+                  <line x1="110" y1="78" x2="110" y2="112" stroke="${akStroke}" stroke-width="2.2" stroke-linecap="round" />
+                </g>
+              </g>
+              <g class="svg-group ${gState('side_carboxyl')}" data-group="side_carboxyl" style="--group-color:${gColor('side_carboxyl')}">
+                <path class="svg-hit" d="M110 112 L110 144 L82 162 M110 144 L140 162" />
+                <g class="svg-vis">
+                  <line x1="110" y1="112" x2="110" y2="144" stroke="${scStroke}" stroke-width="2.2" stroke-linecap="round" />
+                  <line x1="108" y1="142" x2="84" y2="157" stroke="${scStroke}" stroke-width="2" stroke-linecap="round" />
+                  <line x1="112" y1="147" x2="88" y2="162" stroke="${scStroke}" stroke-width="2" stroke-linecap="round" />
+                  <line x1="110" y1="144" x2="135" y2="160" stroke="${scStroke}" stroke-width="2.2" stroke-linecap="round" />
+                  ${isZw ? `<line x1="114" y1="141" x2="136" y2="155" stroke="${scStroke}" stroke-width="1.4" stroke-dasharray="3 2.5" stroke-linecap="round" />` : ''}
+                  <text x="74" y="168" text-anchor="middle" font-size="13.5" font-weight="700" fill="${scO}">O</text>
+                  <text x="139" y="168" text-anchor="start" font-size="13.5" font-weight="700" fill="${scO}">${isZw ? 'O⁻' : 'OH'}</text>
+                </g>
+              </g>
+            `;
+            break;
+          }
+
+          case 'lys': {
+            const saCol = selectedGroup === 'side_amino' ? gColor('side_amino') : blueAtom;
+            sideSVG = `
+              <g class="svg-group ${gState('alkyl')}" data-group="alkyl" style="--group-color:${gColor('alkyl')}">
+                <path class="svg-hit" d="M110 78 L110 104 L88 120 L110 136 L88 152 L110 168" />
+                <g class="svg-vis">
+                  <polyline points="110,78 110,104 88,120 110,136 88,152 110,168" fill="none" stroke="${akStroke}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+                </g>
+              </g>
+              <g class="svg-group ${gState('side_amino')}" data-group="side_amino" style="--group-color:${gColor('side_amino')}">
+                <path class="svg-hit" d="M110 168 L138 182" />
+                <g class="svg-vis">
+                  <line x1="110" y1="168" x2="132" y2="179" stroke="${saCol}" stroke-width="2.2" stroke-linecap="round" />
+                  <text x="136" y="186" text-anchor="start" font-size="13" font-weight="700" fill="${saCol}">${isZw ? 'NH₃⁺' : 'NH₂'}</text>
+                </g>
+              </g>
+            `;
+            break;
+          }
+        }
+
+        return `
+          <svg viewBox="0 0 220 205" class="w-full h-full overflow-visible" aria-label="2D-Skelettformel">
+            ${sideSVG}
+            ${carboxylSVG}
+            ${aminoSVG}
+            ${alphaSVG}
+          </svg>
+        `;
+      }
+
+      // =========================================================================
+      // 5. ANWENDUNGSZUSTAND
+      // =========================================================================
+
+      const state = {
+        aaId: 'leu',              // Start mit Leucin: zeigt Zickzack vs. Fischer-Bogen sofort eindrucksvoll!
+        displayMode: 'ballstick', // 'ballstick' | 'spacefill'
+        isZwitterion: false,
+        conformation: 'staggered',// 'staggered' | 'fischer'
+        isDark: false,
+        selectedGroup: null,
+        showLonePairs: false,
+        showLabels: false,
+        showHBonds: false,
+        showLondon: false,
+        showKeesom: false,
+        showIonic: false,
+        autoRotate: false,
+        inFischerView: false,
+        infoCardOpen: true,
+        skeletalOpen: true
+      };
+
+      // =========================================================================
+      // 6. THREE.JS r128 SZENE & EXAKTE EINZEL-LICHTQUELLEN-BELEUCHTUNG
+      // =========================================================================
+
+      const canvas = document.getElementById('viewport-canvas');
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(BG_DAY);
+
+      const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 150);
+      camera.position.set(0, 0, 10.5);
+      camera.lookAt(0, 0, 0);
+
+      // NUR EINE EINZIGE gerichtete Hauptlichtquelle (vorne-oben-links) -> keine doppelten Glanzpunkte!
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8b9bb0, 0.56);
+      scene.add(hemiLight);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.10);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.78);
+      keyLight.position.set(-5.5, 8.5, 11.5);
+      scene.add(keyLight);
+
+      // Dreh-Pivot für freie 360°-Quaternion-Trackball-Rotation
+      const moleculePivot = new THREE.Group();
+      scene.add(moleculePivot);
+
+      const atomsGroup = new THREE.Group();
+      const bondsGroup = new THREE.Group();
+      const halosGroup = new THREE.Group();
+      const lonePairsGroup = new THREE.Group();
+      const hbondsGroup = new THREE.Group();
+      const londonGroup = new THREE.Group();
+      const keesomGroup = new THREE.Group();
+      const ionicGroup = new THREE.Group();
+      const spritesGroup = new THREE.Group();
+
+      moleculePivot.add(
+        atomsGroup, bondsGroup, halosGroup, lonePairsGroup,
+        hbondsGroup, londonGroup, keesomGroup, ionicGroup, spritesGroup
+      );
+
+      const QUAT_FISCHER = new THREE.Quaternion(0, 0, 0, 1);
+      const QUAT_STANDARD_3D = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.24, -0.46, 0.04, 'YXZ'));
+
+      // Wiederverwendbare Geometrien
+      const sphereGeo = new THREE.SphereGeometry(1, 32, 24);
+      const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 20, 1);
+      const smallDotGeo = new THREE.SphereGeometry(0.068, 16, 12);
+      const coneGeo = new THREE.ConeGeometry(0.14, 0.34, 16);
+
+      const lobeGeo = (() => {
+        const pts = [];
+        for (let i = 0; i <= 20; i++) {
+          const t = i / 20;
+          const y = t * 0.92;
+          const r = Math.sin(Math.pow(t, 0.72) * Math.PI) * 0.30 * (0.35 + 0.65 * t);
+          pts.push(new THREE.Vector2(Math.max(0.001, r), y));
+        }
+        return new THREE.LatheGeometry(pts, 24);
+      })();
+
+      // Laufzeit-Referenzen
+      let molStaggered = null;
+      let molFischer = null;
+      let currentMol = null;
+      let livePositions = [];    // Aktuell gerenderte Atompositionen (für flüssiges Morphing)
+      let atomMeshes = [];
+      let atomTargetRadii = [];
+      let bondEntries = [];      // { aIdx, bIdx, order, planeNormal, aGroup, bGroup, parts, materials }
+      let haloMeshes = [];
+      let londonSphereRefs = []; // { mesh, atomIdx } für Live-Morphing
+      let spriteEntries = [];    // { sprite, kind, atomIdx, offset, group }
+
+      let baseCameraZ = 10.5;
+      let targetCameraZ = 10.5;
+
+      // Smooth-Quaternion-SLERP-Animation
+      const slerpAnim = {
+        active: false,
+        startTime: 0,
+        duration: 700,
+        fromQ: new THREE.Quaternion(),
+        toQ: new THREE.Quaternion(),
+        fromZ: 10.5,
+        toZ: 10.5
+      };
+
+      // Smooth-Konformations-Morphing (Gestaffelt <-> Fischer-Bogen)
+      const morphAnim = {
+        active: false,
+        startTime: 0,
+        duration: 650,
+        fromPos: [],
+        toPos: [],
+        targetMol: null
+      };
+
+      // =========================================================================
+      // 7. 3D-HILFSFUNKTIONEN & MATERIALIEN
+      // =========================================================================
+
+      function getElementHex(el) {
+        if (el === 'H') return state.isDark ? CPK.H.darkColor : CPK.H.color;
+        return CPK[el].color;
+      }
+
+      function createCPKMaterial(el) {
+        const isH = el === 'H';
+        return new THREE.MeshPhongMaterial({
+          color: getElementHex(el),
+          specular: isH ? 0x475569 : 0x3b3b3b,
+          shininess: isH ? 42 : 58
+        });
+      }
+
+      function positionCylinder(mesh, pA, pB, radius) {
+        const dir = new THREE.Vector3().subVectors(pB, pA);
+        const len = dir.length();
+        if (len < 1e-5) {
+          mesh.visible = false;
+          return;
+        }
+        mesh.visible = true;
+        mesh.scale.set(radius, len, radius);
+        mesh.position.copy(pA).addScaledVector(dir, 0.5);
+        mesh.quaternion.setFromUnitVectors(UP, dir.normalize());
+      }
+
+      function createCylinderSegment(pA, pB, radius, material) {
+        const mesh = new THREE.Mesh(cylGeo, material);
+        positionCylinder(mesh, pA, pB, radius);
+        return mesh;
+      }
+
+      function createBadgeSprite(text, { bg, fg, border, fontSize = 54, scale = 0.58, shape = 'pill' } = {}) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+
+        ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
+        const metrics = ctx.measureText(text);
+        const padX = shape === 'circle' ? 0 : 26;
+        const boxW = shape === 'circle' ? 92 : Math.min(240, Math.max(88, metrics.width + padX * 2));
+        const boxH = shape === 'circle' ? 92 : 84;
+        const x = (c.width - boxW) / 2;
+        const y = (c.height - boxH) / 2;
+        const r = shape === 'circle' ? boxH / 2 : 24;
+
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + boxW, y, x + boxW, y + boxH, r);
+        ctx.arcTo(x + boxW, y + boxH, x, y + boxH, r);
+        ctx.arcTo(x, y + boxH, x, y, r);
+        ctx.arcTo(x, y, x + boxW, y, r);
+        ctx.closePath();
+
+        ctx.fillStyle = bg;
+        ctx.fill();
+        if (border) {
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = border;
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = fg;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, c.width / 2, c.height / 2 + 2);
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(scale * 2.0, scale, 1);
+        sprite.renderOrder = 25;
+        return sprite;
+      }
+
+      /**
+       * Erzeugt eine aktualisierbare Zwei-Farben-Bindung (order = 1, 2 oder 1.5),
+       * die während des Konformations-Morphings dynamisch mitwandert.
+       */
+      function addStyledBond(mol, bond) {
+        const atomA = mol.atoms[bond.a];
+        const atomB = mol.atoms[bond.b];
+        const matA = createCPKMaterial(atomA.el);
+        const matB = createCPKMaterial(atomB.el);
+        const parts = []; // { mesh, side: 'a'|'b', offsetSign, t0, t1, radius }
+
+        if (bond.order === 1) {
+          const r = 0.112;
+          const mA = new THREE.Mesh(cylGeo, matA);
+          const mB = new THREE.Mesh(cylGeo, matB);
+          bondsGroup.add(mA, mB);
+          parts.push({ mesh: mA, offsetSign: 0, t0: 0, t1: 0.5, radius: r });
+          parts.push({ mesh: mB, offsetSign: 0, t0: 0.5, t1: 1, radius: r });
+        } else {
+          const rD = 0.072;
+          const m1A = new THREE.Mesh(cylGeo, matA);
+          const m1B = new THREE.Mesh(cylGeo, matB);
+          bondsGroup.add(m1A, m1B);
+          parts.push({ mesh: m1A, offsetSign: 1, t0: 0, t1: 0.5, radius: rD });
+          parts.push({ mesh: m1B, offsetSign: 1, t0: 0.5, t1: 1, radius: rD });
+
+          if (bond.order === 2) {
+            const m2A = new THREE.Mesh(cylGeo, matA);
+            const m2B = new THREE.Mesh(cylGeo, matB);
+            bondsGroup.add(m2A, m2B);
+            parts.push({ mesh: m2A, offsetSign: -1, t0: 0, t1: 0.5, radius: rD });
+            parts.push({ mesh: m2B, offsetSign: -1, t0: 0.5, t1: 1, radius: rD });
+          } else {
+            const segs = 5;
+            for (let i = 0; i < segs; i++) {
+              const t0 = (i + 0.14) / segs;
+              const t1 = (i + 0.72) / segs;
+              const mat = (t0 + t1) * 0.5 < 0.5 ? matA : matB;
+              const ms = new THREE.Mesh(cylGeo, mat);
+              bondsGroup.add(ms);
+              parts.push({ mesh: ms, offsetSign: -1, t0, t1, radius: rD * 0.85 });
+            }
+          }
+        }
+
+        const entry = {
+          aIdx: bond.a,
+          bIdx: bond.b,
+          elA: atomA.el,
+          elB: atomB.el,
+          order: bond.order,
+          planeNormal: bond.planeNormal ? bond.planeNormal.clone() : null,
+          aGroup: atomA.group,
+          bGroup: atomB.group,
+          parts,
+          materials: [matA, matB]
+        };
+        bondEntries.push(entry);
+        updateSingleBondGeometry(entry, livePositions[bond.a], livePositions[bond.b]);
+      }
+
+      function updateSingleBondGeometry(entry, pA, pB) {
+        const sep = 0.095;
+        let offsetDir = null;
+        if (entry.order !== 1) {
+          const bondDir = new THREE.Vector3().subVectors(pB, pA).normalize();
+          offsetDir = entry.planeNormal ? new THREE.Vector3().crossVectors(bondDir, entry.planeNormal) : null;
+          if (!offsetDir || offsetDir.lengthSq() < 1e-5) offsetDir = getPerp(bondDir).t1;
+          offsetDir.normalize();
+        }
+        for (const p of entry.parts) {
+          const aPt = pA.clone();
+          const bPt = pB.clone();
+          if (p.offsetSign !== 0 && offsetDir) {
+            aPt.addScaledVector(offsetDir, p.offsetSign * sep);
+            bPt.addScaledVector(offsetDir, p.offsetSign * sep);
+          }
+          const s0 = aPt.clone().lerp(bPt, p.t0);
+          const s1 = aPt.clone().lerp(bPt, p.t1);
+          positionCylinder(p.mesh, s0, s1, p.radius);
+        }
+      }
+
+      function addDashedCylinders(parentGroup, pA, pB, colorHex, radius = 0.042, dashes = 6, opacity = 0.92) {
+        const mat = new THREE.MeshPhongMaterial({
+          color: colorHex,
+          emissive: colorHex,
+          emissiveIntensity: 0.2,
+          transparent: opacity < 1,
+          opacity
+        });
+        for (let i = 0; i < dashes; i++) {
+          const t0 = (i + 0.14) / dashes;
+          const t1 = (i + 0.70) / dashes;
+          parentGroup.add(createCylinderSegment(pA.clone().lerp(pB, t0), pA.clone().lerp(pB, t1), radius, mat));
+        }
+      }
+
+      function addLonePairLobe(origin, dir, { color = 0xf59e0b, dotColor = 0xd97706, scale = 1.0 } = {}) {
+        const holder = new THREE.Group();
+        holder.position.copy(origin);
+        holder.quaternion.setFromUnitVectors(UP, dir.clone().normalize());
+
+        const lobeMat = new THREE.MeshPhongMaterial({
+          color,
+          transparent: true,
+          opacity: 0.28,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        });
+        const lobe = new THREE.Mesh(lobeGeo, lobeMat);
+        lobe.scale.setScalar(scale);
+        lobe.position.y = 0.18 * scale;
+        holder.add(lobe);
+
+        const dotMat = new THREE.MeshPhongMaterial({
+          color: dotColor,
+          emissive: color,
+          emissiveIntensity: 0.4
+        });
+        const d1 = new THREE.Mesh(smallDotGeo, dotMat);
+        const d2 = new THREE.Mesh(smallDotGeo, dotMat);
+        d1.position.set(-0.088 * scale, 0.72 * scale, 0);
+        d2.position.set(0.088 * scale, 0.72 * scale, 0);
+        holder.add(d1, d2);
+
+        lonePairsGroup.add(holder);
+      }
+
+      function buildOverlaysForMol(mol) {
+        [lonePairsGroup, hbondsGroup, londonGroup, keesomGroup, ionicGroup, spritesGroup].forEach(clearGroup);
+        londonSphereRefs = [];
+        spriteEntries = [];
+
+        // 1. Freie Elektronenpaare
+        const adj = mol.atoms.map(() => []);
+        for (const bond of mol.bonds) {
+          adj[bond.a].push(bond.b);
+          adj[bond.b].push(bond.a);
+        }
+        for (const atom of mol.atoms) {
+          const neighbors = adj[atom.idx];
+          const nDirs = neighbors.map(ni => mol.atoms[ni].pos.clone().sub(atom.pos).normalize());
+
+          if (atom.lonePairMode === 'aromatic_n' && atom.sp2PlaneNormal) {
+            addLonePairLobe(atom.pos, atom.sp2PlaneNormal, { color: 0x8b5cf6, dotColor: 0x6d28d9, scale: 0.88 });
+            addLonePairLobe(atom.pos, atom.sp2PlaneNormal.clone().negate(), { color: 0x8b5cf6, dotColor: 0x6d28d9, scale: 0.88 });
+            continue;
+          }
+          if (atom.el === 'O') {
+            if (neighbors.length === 1) {
+              const back = nDirs[0];
+              if (atom.lonePairMode === 'carboxylate_o') {
+                const ref = atom.sp2PlaneNormal || V(0, 0, 1);
+                for (const phi of [0, 120, 240]) addLonePairLobe(atom.pos, tetraDir(back, ref, phi), { scale: 0.90 });
+              } else {
+                const nrm = atom.sp2PlaneNormal || V(0, 0, 1);
+                const inPlane = new THREE.Vector3().crossVectors(back, nrm).normalize();
+                addLonePairLobe(atom.pos, angleDir(back, inPlane, 120), { scale: 0.94 });
+                addLonePairLobe(atom.pos, angleDir(back, inPlane.clone().negate(), 120), { scale: 0.94 });
+              }
+            } else if (neighbors.length === 2) {
+              const bisectOut = nDirs[0].clone().add(nDirs[1]).negate().normalize();
+              const perp = new THREE.Vector3().crossVectors(nDirs[0], nDirs[1]).normalize();
+              const c54 = Math.cos(THREE.MathUtils.degToRad(54.7));
+              const s54 = Math.sin(THREE.MathUtils.degToRad(54.7));
+              addLonePairLobe(atom.pos, bisectOut.clone().multiplyScalar(c54).addScaledVector(perp, s54), { scale: 0.92 });
+              addLonePairLobe(atom.pos, bisectOut.clone().multiplyScalar(c54).addScaledVector(perp, -s54), { scale: 0.92 });
+            }
+          }
+          if (atom.el === 'N' && neighbors.length === 3) {
+            const sum = nDirs[0].clone().add(nDirs[1]).add(nDirs[2]);
+            if (sum.lengthSq() > 1e-4) addLonePairLobe(atom.pos, sum.negate().normalize(), { scale: 0.98 });
+          }
+          if (atom.el === 'S' && neighbors.length === 2) {
+            const bisectOut = nDirs[0].clone().add(nDirs[1]).negate().normalize();
+            const perp = new THREE.Vector3().crossVectors(nDirs[0], nDirs[1]).normalize();
+            const c54 = Math.cos(THREE.MathUtils.degToRad(54.7));
+            const s54 = Math.sin(THREE.MathUtils.degToRad(54.7));
+            addLonePairLobe(atom.pos, bisectOut.clone().multiplyScalar(c54).addScaledVector(perp, s54), { scale: 1.0 });
+            addLonePairLobe(atom.pos, bisectOut.clone().multiplyScalar(c54).addScaledVector(perp, -s54), { scale: 1.0 });
+          }
+        }
+
+        // 2. Wasserstoffbrücken (WBB) + H2O-Partner
+        const oMat = new THREE.MeshPhongMaterial({ color: 0xe52e2e, transparent: true, opacity: 0.50, shininess: 50 });
+        const hMat = new THREE.MeshPhongMaterial({ color: 0xdde3ea, transparent: true, opacity: 0.58, shininess: 40 });
+        const bMat = new THREE.MeshPhongMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.45 });
+
+        const addWater = (oPos, h1Pos, h2Pos) => {
+          const oMesh = new THREE.Mesh(sphereGeo, oMat);
+          oMesh.scale.setScalar(0.32);
+          oMesh.position.copy(oPos);
+          hbondsGroup.add(oMesh);
+          for (const hp of [h1Pos, h2Pos]) {
+            const hMesh = new THREE.Mesh(sphereGeo, hMat);
+            hMesh.scale.setScalar(0.22);
+            hMesh.position.copy(hp);
+            hbondsGroup.add(hMesh);
+            hbondsGroup.add(createCylinderSegment(oPos, hp, 0.068, bMat));
+          }
+        };
+
+        for (const site of mol.hbondSites) {
+          const atom = mol.atoms[site.atomIdx];
+          const dir = site.dir.clone().normalize();
+          const start = atom.pos.clone().addScaledVector(dir, 0.36);
+
+          if (site.type === 'donor') {
+            const oPos = atom.pos.clone().addScaledVector(dir, 1.88);
+            addDashedCylinders(hbondsGroup, start, oPos.clone().addScaledVector(dir, -0.34), 0x0284c7, 0.044, 6);
+            const { t1 } = getPerp(dir);
+            const dH1 = angleDir(dir.clone().negate(), t1, 127);
+            const dH2 = angleDir(dir.clone().negate(), t1.clone().negate(), 127);
+            addWater(oPos, oPos.clone().addScaledVector(dH1, 0.96), oPos.clone().addScaledVector(dH2, 0.96));
+          } else {
+            const h1Pos = atom.pos.clone().addScaledVector(dir, 1.82);
+            addDashedCylinders(hbondsGroup, start, h1Pos.clone().addScaledVector(dir, -0.26), 0x0ea5e9, 0.044, 6);
+            const oPos = h1Pos.clone().addScaledVector(dir, 0.96);
+            const { t1 } = getPerp(dir);
+            const dH2 = angleDir(dir.clone().negate(), t1, 104.5);
+            addWater(oPos, h1Pos, oPos.clone().addScaledVector(dH2, 0.96));
+          }
+        }
+
+        // 3. London-Kräfte (unpolare Hüllen + violette π-Elektronenwolken)
+        const londonMat = new THREE.MeshPhongMaterial({
+          color: 0xf59e0b,
+          transparent: true,
+          opacity: 0.18,
+          depthWrite: false,
+          shininess: 35
+        });
+        for (const atom of mol.atoms) {
+          if (!atom.hydrophobic) continue;
+          const m = new THREE.Mesh(sphereGeo, londonMat);
+          m.position.copy(atom.pos);
+          m.scale.setScalar(CPK[atom.el].vdw * 0.85);
+          londonGroup.add(m);
+          londonSphereRefs.push({ mesh: m, atomIdx: atom.idx });
+        }
+
+        const piMat = new THREE.MeshPhongMaterial({
+          color: 0x8b5cf6,
+          emissive: 0x7c3aed,
+          emissiveIntensity: 0.22,
+          transparent: true,
+          opacity: 0.36,
+          depthWrite: false
+        });
+        for (const ring of mol.rings) {
+          const torusGeo = new THREE.TorusGeometry(ring.radius, 0.24, 16, 40);
+          for (const side of [-1, 1]) {
+            const cloud = new THREE.Mesh(torusGeo, piMat);
+            cloud.position.copy(ring.center).addScaledVector(ring.normal, side * 0.76);
+            cloud.quaternion.setFromUnitVectors(V(0, 0, 1), ring.normal);
+            londonGroup.add(cloud);
+          }
+        }
+
+        // 4. Keesom-Wechselwirkungen (permanente Dipolpfeile δ+ -> δ-)
+        const arrowMat = new THREE.MeshPhongMaterial({
+          color: 0x10b981,
+          emissive: 0x059669,
+          emissiveIntensity: 0.22,
+          shininess: 55
+        });
+        for (const site of mol.dipoleSites) {
+          const pPos = mol.atoms[site.posIdx].pos;
+          const pNeg = mol.atoms[site.negIdx].pos;
+          const dir = pNeg.clone().sub(pPos).normalize();
+          const { t1 } = getPerp(dir, V(0, 0, 1));
+          const offset = t1.clone().multiplyScalar(0.46);
+
+          const start = pPos.clone().add(offset);
+          const end = pNeg.clone().add(offset);
+          const tipBase = end.clone().addScaledVector(dir, -0.32);
+
+          keesomGroup.add(createCylinderSegment(start, tipBase, 0.042, arrowMat));
+          const head = new THREE.Mesh(coneGeo, arrowMat);
+          head.position.copy(end).addScaledVector(dir, -0.16);
+          head.quaternion.setFromUnitVectors(UP, dir);
+          keesomGroup.add(head);
+
+          const crossPt = start.clone().addScaledVector(dir, 0.20);
+          const { t2 } = getPerp(dir, offset);
+          keesomGroup.add(createCylinderSegment(
+            crossPt.clone().addScaledVector(t2, -0.16),
+            crossPt.clone().addScaledVector(t2, 0.16),
+            0.036,
+            arrowMat
+          ));
+        }
+
+        // 5. Ionen-Wechselwirkungen / Salzbrücken
+        for (const site of mol.ionicSites) {
+          const dir = site.dir.clone().normalize();
+          const origin = site.anchorPos.clone();
+          const counterPos = origin.clone().addScaledVector(dir, 2.55);
+
+          const isTargetNeg = site.sign < 0;
+          const counterColor = isTargetNeg ? 0x2563eb : 0xe11d48;
+          const fieldColor = isTargetNeg ? 0x6366f1 : 0xf43f5e;
+
+          const ionMat = new THREE.MeshPhongMaterial({
+            color: counterColor,
+            emissive: counterColor,
+            emissiveIntensity: 0.2,
+            transparent: true,
+            opacity: 0.34,
+            depthWrite: false
+          });
+          const ionSphere = new THREE.Mesh(sphereGeo, ionMat);
+          ionSphere.position.copy(counterPos);
+          ionSphere.scale.setScalar(0.55);
+          ionicGroup.add(ionSphere);
+
+          const ringGeo = new THREE.TorusGeometry(0.65, 0.025, 10, 32);
+          const ringMat = new THREE.MeshBasicMaterial({ color: counterColor, transparent: true, opacity: 0.55 });
+          const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.position.copy(counterPos);
+          ringMesh.quaternion.setFromUnitVectors(V(0, 0, 1), dir);
+          ionicGroup.add(ringMesh);
+
+          addDashedCylinders(
+            ionicGroup,
+            origin.clone().addScaledVector(dir, 0.45),
+            counterPos.clone().addScaledVector(dir, -0.60),
+            fieldColor,
+            0.048,
+            6,
+            0.9
+          );
+
+          const { t1, t2 } = getPerp(dir);
+          const curveMat = new THREE.LineBasicMaterial({ color: fieldColor, transparent: true, opacity: 0.48 });
+          for (let k = 0; k < 4; k++) {
+            const ang = (k * Math.PI) / 2;
+            const bulge = t1.clone().multiplyScalar(Math.cos(ang)).addScaledVector(t2, Math.sin(ang));
+            const midPt = origin.clone().lerp(counterPos, 0.5).addScaledVector(bulge, 0.62);
+            const curve = new THREE.QuadraticBezierCurve3(
+              origin.clone().addScaledVector(dir, 0.35),
+              midPt,
+              counterPos.clone().addScaledVector(dir, -0.45)
+            );
+            ionicGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(20)), curveMat));
+          }
+
+          site.counterPos = counterPos;
+        }
+
+        // 6. Sprites (Elementsymbole, Cα*, +/-, δ+/δ−, Gegenion)
+        for (const atom of mol.atoms) {
+          const symText = atom.isChiralCenter ? 'Cα*' : atom.isAlphaC ? 'Cα' : atom.el;
+          const styleMap = {
+            C: { bg: 'rgba(51,65,85,0.92)', fg: '#ffffff', border: '#1e293b' },
+            H: { bg: 'rgba(241,245,249,0.95)', fg: '#1e293b', border: '#64748b' },
+            O: { bg: 'rgba(220,38,38,0.94)', fg: '#ffffff', border: '#991b1b' },
+            N: { bg: 'rgba(37,99,235,0.94)', fg: '#ffffff', border: '#1e40af' },
+            S: { bg: 'rgba(226,185,27,0.96)', fg: '#1e293b', border: '#a16207' }
+          };
+          const symStyle = atom.isChiralCenter
+            ? { bg: 'rgba(13,148,136,0.96)', fg: '#ffffff', border: '#115e59' }
+            : styleMap[atom.el];
+          const symOffset = V(0, 0, 0.05);
+          const symSprite = createBadgeSprite(symText, {
+            ...symStyle,
+            fontSize: atom.isAlphaC ? 46 : 54,
+            scale: atom.isAlphaC ? 0.56 : 0.46
+          });
+          symSprite.position.copy(atom.pos).add(symOffset);
+          spritesGroup.add(symSprite);
+          spriteEntries.push({ sprite: symSprite, kind: 'symbol', atomIdx: atom.idx, offset: symOffset, group: atom.group });
+
+          if (atom.charge !== 0) {
+            const isPos = atom.charge > 0;
+            const chOffset = V(0.42, 0.44, 0.30);
+            const chSprite = createBadgeSprite(isPos ? '+' : '−', {
+              bg: isPos ? '#2563eb' : '#e11d48',
+              fg: '#ffffff',
+              border: '#ffffff',
+              fontSize: 66,
+              scale: 0.48,
+              shape: 'circle'
+            });
+            chSprite.position.copy(atom.pos).add(chOffset);
+            spritesGroup.add(chSprite);
+            spriteEntries.push({ sprite: chSprite, kind: 'charge', atomIdx: atom.idx, offset: chOffset, group: atom.group });
+          }
+
+          if (atom.partial) {
+            const isPos = atom.partial.includes('+');
+            const pOffset = V(0, 0.52, 0.25);
+            const pSprite = createBadgeSprite(atom.partial, {
+              bg: isPos ? 'rgba(224,242,254,0.96)' : 'rgba(255,228,230,0.96)',
+              fg: isPos ? '#0369a1' : '#be123c',
+              border: isPos ? '#38bdf8' : '#fb7185',
+              fontSize: 52,
+              scale: 0.48
+            });
+            pSprite.position.copy(atom.pos).add(pOffset);
+            spritesGroup.add(pSprite);
+            spriteEntries.push({ sprite: pSprite, kind: 'partial', atomIdx: atom.idx, offset: pOffset, group: atom.group });
+          }
+        }
+
+        for (const site of mol.ionicSites) {
+          if (!site.counterPos) continue;
+          const isCounterPos = site.sign < 0;
+          const ionSprite = createBadgeSprite(isCounterPos ? 'Gegenion (+)' : 'Gegenion (−)', {
+            bg: isCounterPos ? 'rgba(239,246,255,0.96)' : 'rgba(255,241,242,0.96)',
+            fg: isCounterPos ? '#1d4ed8' : '#be123c',
+            border: isCounterPos ? '#60a5fa' : '#fb7185',
+            fontSize: 34,
+            scale: 0.72
+          });
+          ionSprite.position.copy(site.counterPos).add(V(0, 0.78, 0));
+          spritesGroup.add(ionSprite);
+          spriteEntries.push({ sprite: ionSprite, kind: 'ionic', atomIdx: -1, offset: null, group: null });
+        }
+
+        applyLayerVisibilities(true);
+        applyGroupHighlighting();
+      }
+
+      // =========================================================================
+      // 8. MOLEKÜL AUFBAUEN, MORPHEN & SICHTBARKEITEN
+      // =========================================================================
+
+      function clearGroup(grp) {
+        while (grp.children.length > 0) {
+          const obj = grp.children.pop();
+          if (obj.geometry && ![sphereGeo, cylGeo, smallDotGeo, coneGeo, lobeGeo].includes(obj.geometry)) {
+            obj.geometry.dispose();
+          }
+          if (obj.material) {
+            if (obj.material.map) obj.material.map.dispose();
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+          }
+        }
+      }
+
+      function centerMol(mol) {
+        const box = new THREE.Box3();
+        for (const atom of mol.atoms) box.expandByPoint(atom.pos);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        for (const atom of mol.atoms) atom.pos.sub(center);
+        for (const ring of mol.rings) ring.center.sub(center);
+        for (const isite of mol.ionicSites) isite.anchorPos.sub(center);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        return size;
+      }
+
+      function getUniqueGroups(mol) {
+        const seen = [];
+        for (const atom of mol.atoms) {
+          if (!seen.includes(atom.group)) seen.push(atom.group);
+        }
+        const prio = ['carboxyl', 'amino', 'amino_sec', 'alpha_c'];
+        return seen.sort((a, b) => {
+          const ia = prio.indexOf(a);
+          const ib = prio.indexOf(b);
+          if (ia !== -1 && ib !== -1) return ia - ib;
+          if (ia !== -1) return -1;
+          if (ib !== -1) return 1;
+          return 0;
+        });
+      }
+
+      function rebuildMolecule({ resetView = false } = {}) {
+        morphAnim.active = false;
+        const aa = AMINO_ACIDS.find(a => a.id === state.aaId) || AMINO_ACIDS[0];
+
+        // Beide Konformationen erzeugen und sauber zentrieren
+        molStaggered = aa.build(state.isZwitterion, false);
+        molFischer = aa.build(state.isZwitterion, true);
+        const sizeStag = centerMol(molStaggered);
+        const sizeFisch = centerMol(molFischer);
+
+        const mol = state.conformation === 'fischer' ? molFischer : molStaggered;
+        const activeSize = state.conformation === 'fischer' ? sizeFisch : sizeStag;
+        currentMol = mol;
+        livePositions = mol.atoms.map(a => a.pos.clone());
+
+        [atomsGroup, bondsGroup, halosGroup, lonePairsGroup, hbondsGroup, londonGroup, keesomGroup, ionicGroup, spritesGroup]
+          .forEach(clearGroup);
+        atomMeshes = [];
+        atomTargetRadii = [];
+        bondEntries = [];
+        haloMeshes = [];
+
+        const availableGroups = getUniqueGroups(mol);
+        if (state.selectedGroup && !availableGroups.includes(state.selectedGroup)) {
+          state.selectedGroup = null;
+        }
+
+        // Atome & Auren
+        for (const atom of mol.atoms) {
+          const cpk = CPK[atom.el];
+          const r = state.displayMode === 'spacefill' ? cpk.vdw : cpk.radius;
+          const mesh = new THREE.Mesh(sphereGeo, createCPKMaterial(atom.el));
+          mesh.position.copy(atom.pos);
+          mesh.scale.setScalar(r);
+          mesh.userData = { atomIdx: atom.idx, el: atom.el, group: atom.group };
+          atomsGroup.add(mesh);
+          atomMeshes.push(mesh);
+          atomTargetRadii.push(r);
+
+          const gMeta = GROUP_META[atom.group];
+          const haloMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(gMeta ? gMeta.accentHex : '#2563eb'),
+            transparent: true,
+            opacity: 0.24,
+            depthWrite: false
+          });
+          const halo = new THREE.Mesh(sphereGeo, haloMat);
+          halo.position.copy(atom.pos);
+          halo.scale.setScalar(r * 1.40);
+          halo.visible = false;
+          halo.userData = { group: atom.group };
+          halosGroup.add(halo);
+          haloMeshes.push(halo);
+        }
+
+        // Bindungen
+        for (const bond of mol.bonds) {
+          addStyledBond(mol, bond);
+        }
+
+        // Overlays & Sprites
+        buildOverlaysForMol(mol);
+
+        // Optimale Kameradistanz
+        const radius = Math.max(2.3, activeSize.length() * 0.5);
+        baseCameraZ = Math.max(8.4, radius * 2.85);
+
+        if (resetView) {
+          targetCameraZ = baseCameraZ;
+          const destQ = state.inFischerView ? QUAT_FISCHER : QUAT_STANDARD_3D;
+          startSlerp(destQ, baseCameraZ, 550);
+        }
+
+        updateHeaderUI(aa);
+        updateGroupChipsUI(mol);
+        updateInfoCardUI(aa);
+        updateSkeletalCardUI(aa);
+        updateForcesLegendUI(aa);
+        updateConformationButtonsUI();
+      }
+
+      /**
+       * Morpht flüssig (650 ms) zwischen gestaffelter Zickzack- und ekliptischer Fischer-Bogen-Konformation.
+       */
+      function morphToConformation(targetConf) {
+        if (state.conformation === targetConf && !morphAnim.active) return;
+        state.conformation = targetConf;
+        updateConformationButtonsUI();
+
+        const targetMol = targetConf === 'fischer' ? molFischer : molStaggered;
+        if (!targetMol || targetMol.atoms.length !== atomMeshes.length) {
+          rebuildMolecule({ resetView: false });
+          return;
+        }
+
+        morphAnim.active = true;
+        morphAnim.startTime = performance.now();
+        morphAnim.duration = 650;
+        morphAnim.fromPos = livePositions.map(p => p.clone());
+        morphAnim.toPos = targetMol.atoms.map(a => a.pos.clone());
+        morphAnim.targetMol = targetMol;
+
+        // Während des Morphings statische Overlays kurz ausblenden; am Ende exakt neu aufbauen
+        lonePairsGroup.visible = false;
+        hbondsGroup.visible = false;
+        keesomGroup.visible = false;
+        ionicGroup.visible = false;
+      }
+
+      function applyLayerVisibilities(immediateScale = false) {
+        bondsGroup.visible = state.displayMode === 'ballstick';
+        lonePairsGroup.visible = !morphAnim.active && state.showLonePairs && state.displayMode === 'ballstick';
+        hbondsGroup.visible = !morphAnim.active && state.showHBonds;
+        londonGroup.visible = state.showLondon;
+        keesomGroup.visible = !morphAnim.active && state.showKeesom;
+        ionicGroup.visible = !morphAnim.active && state.showIonic && state.isZwitterion;
+
+        if (currentMol) {
+          for (let i = 0; i < atomMeshes.length; i++) {
+            const cpk = CPK[currentMol.atoms[i].el];
+            const targetR = state.displayMode === 'spacefill' ? cpk.vdw : cpk.radius;
+            atomTargetRadii[i] = targetR;
+            if (immediateScale) {
+              atomMeshes[i].scale.setScalar(targetR);
+              haloMeshes[i].scale.setScalar(targetR * 1.40);
+            }
+          }
+        }
+
+        for (const entry of spriteEntries) {
+          if (entry.kind === 'symbol') entry.sprite.visible = state.showLabels;
+          else if (entry.kind === 'charge') entry.sprite.visible = state.isZwitterion;
+          else if (entry.kind === 'partial') entry.sprite.visible = state.showHBonds || state.showKeesom;
+          else if (entry.kind === 'ionic') entry.sprite.visible = !morphAnim.active && state.showIonic && state.isZwitterion;
+        }
+      }
+
+      function applyGroupHighlighting() {
+        const sel = state.selectedGroup;
+
+        for (let i = 0; i < atomMeshes.length; i++) {
+          const mesh = atomMeshes[i];
+          const halo = haloMeshes[i];
+          const match = !sel || mesh.userData.group === sel;
+          mesh.material.transparent = !match;
+          mesh.material.opacity = match ? 1.0 : 0.22;
+          mesh.material.depthWrite = match;
+          mesh.material.needsUpdate = true;
+          halo.visible = Boolean(sel && mesh.userData.group === sel);
+        }
+
+        for (const b of bondEntries) {
+          const bothIn = !sel || (b.aGroup === sel && b.bGroup === sel);
+          const partial = sel && (b.aGroup === sel || b.bGroup === sel) && !bothIn;
+          const opacity = bothIn ? 1.0 : partial ? 0.34 : 0.16;
+          for (const mat of b.materials) {
+            mat.transparent = opacity < 1.0;
+            mat.opacity = opacity;
+            mat.depthWrite = opacity === 1.0;
+            mat.needsUpdate = true;
+          }
+        }
+
+        for (const entry of spriteEntries) {
+          const match = !sel || !entry.group || entry.group === sel;
+          entry.sprite.material.opacity = match ? 1.0 : 0.28;
+        }
+      }
+
+      /**
+       * Schaltet Tagmodus ↔ Nachtmodus (3D-Hintergrund, Einzel-Lichtquelle, H-Kontrast & gesamte UI/SVG).
+       */
+      function applyTheme() {
+        document.body.classList.toggle('dark', state.isDark);
+        scene.background = new THREE.Color(state.isDark ? BG_DARK : BG_DAY);
+
+        // Licht leicht anpassen (immer nur EINE gerichtete Hauptlichtquelle!)
+        if (state.isDark) {
+          hemiLight.color.setHex(0xe2e8f0);
+          hemiLight.groundColor.setHex(0x334155);
+          hemiLight.intensity = 0.54;
+          keyLight.intensity = 0.86;
+        } else {
+          hemiLight.color.setHex(0xffffff);
+          hemiLight.groundColor.setHex(0x8b9bb0);
+          hemiLight.intensity = 0.56;
+          keyLight.intensity = 0.78;
+        }
+
+        // H-Atom- und H-Bindungsfarben dynamisch auf Tag/Nacht abstimmen
+        const hHex = getElementHex('H');
+        for (const mesh of atomMeshes) {
+          if (mesh.userData.el === 'H') mesh.material.color.setHex(hHex);
+        }
+        for (const b of bondEntries) {
+          if (b.elA === 'H') b.materials[0].color.setHex(hHex);
+          if (b.elB === 'H') b.materials[1].color.setHex(hHex);
+        }
+
+        // Button-Icon & Label aktualisieren
+        document.getElementById('icon-moon').classList.toggle('hidden', state.isDark);
+        document.getElementById('icon-sun').classList.toggle('hidden', !state.isDark);
+        document.getElementById('label-darkmode').textContent = state.isDark ? 'Tagmodus' : 'Nachtmodus';
+
+        // 2D-Skelettformel im passenden Kontrast neu rendern
+        const aa = AMINO_ACIDS.find(a => a.id === state.aaId);
+        if (aa) updateSkeletalCardUI(aa);
+      }
+
+      // =========================================================================
+      // 9. UNEINGESCHRÄNKTE 360°-QUATERNION-TRACKBALL-STEUERUNG & SMOOTH-SLERP
+      // =========================================================================
+
+      const activePointers = new Map();
+      let downStart = { x: 0, y: 0, time: 0, moved: false };
+      let prevSingle = { x: 0, y: 0 };
+      let prevPinch = { dist: 0, angle: 0 };
+      let angularVel = { x: 0, y: 0, z: 0 };
+
+      function startSlerp(targetQ, destZ = targetCameraZ, duration = 700) {
+        angularVel = { x: 0, y: 0, z: 0 };
+        slerpAnim.active = true;
+        slerpAnim.startTime = performance.now();
+        slerpAnim.duration = duration;
+        slerpAnim.fromQ.copy(moleculePivot.quaternion);
+        slerpAnim.toQ.copy(targetQ);
+        slerpAnim.fromZ = camera.position.z;
+        slerpAnim.toZ = THREE.MathUtils.clamp(destZ, 4.2, 26);
+        targetCameraZ = slerpAnim.toZ;
+      }
+
+      function applyWorldRotation(rotX, rotY, rotZ = 0) {
+        if (Math.abs(rotY) > 1e-6) {
+          moleculePivot.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), rotY));
+        }
+        if (Math.abs(rotX) > 1e-6) {
+          moleculePivot.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), rotX));
+        }
+        if (Math.abs(rotZ) > 1e-6) {
+          moleculePivot.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), rotZ));
+        }
+        moleculePivot.quaternion.normalize();
+      }
+
+      function exitFischerViewBadge() {
+        // Wichtig: Konformation bleibt beim freien Drehen bewusst erhalten, damit man den C-Bogen seitlich zeigen kann!
+        if (state.inFischerView) {
+          state.inFischerView = false;
+          updateViewPresetButtons();
+        }
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        canvas.setPointerCapture(e.pointerId);
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        slerpAnim.active = false;
+        angularVel = { x: 0, y: 0, z: 0 };
+
+        if (activePointers.size === 1) {
+          downStart = { x: e.clientX, y: e.clientY, time: performance.now(), moved: false };
+          prevSingle = { x: e.clientX, y: e.clientY };
+        } else if (activePointers.size === 2) {
+          downStart.moved = true;
+          const pts = Array.from(activePointers.values());
+          prevPinch.dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+          prevPinch.angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+        }
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (activePointers.size === 1) {
+          const dx = e.clientX - prevSingle.x;
+          const dy = e.clientY - prevSingle.y;
+          prevSingle = { x: e.clientX, y: e.clientY };
+
+          if (Math.hypot(e.clientX - downStart.x, e.clientY - downStart.y) > 5) {
+            downStart.moved = true;
+            exitFischerViewBadge();
+            if (state.autoRotate) {
+              state.autoRotate = false;
+              updateViewPresetButtons();
+            }
+          }
+
+          const speed = 0.0075;
+          if (e.shiftKey || e.buttons === 2) {
+            const rz = -dx * speed;
+            applyWorldRotation(0, 0, rz);
+            angularVel = { x: 0, y: 0, z: rz };
+          } else {
+            const ry = dx * speed;
+            const rx = dy * speed;
+            applyWorldRotation(rx, ry, 0);
+            angularVel = { x: rx, y: ry, z: 0 };
+          }
+        } else if (activePointers.size === 2) {
+          const pts = Array.from(activePointers.values());
+          const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+          const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+
+          if (prevPinch.dist > 10) {
+            const ratio = prevPinch.dist / Math.max(10, dist);
+            targetCameraZ = THREE.MathUtils.clamp(targetCameraZ * ratio, 4.2, 26);
+          }
+
+          let dAng = angle - prevPinch.angle;
+          if (dAng > Math.PI) dAng -= Math.PI * 2;
+          if (dAng < -Math.PI) dAng += Math.PI * 2;
+          if (Math.abs(dAng) > 0.002) {
+            exitFischerViewBadge();
+            applyWorldRotation(0, 0, -dAng);
+          }
+
+          prevPinch.dist = dist;
+          prevPinch.angle = angle;
+        }
+      });
+
+      const raycaster = new THREE.Raycaster();
+      const pointerNDC = new THREE.Vector2();
+
+      function handlePointerEnd(e) {
+        const wasSingleTap = activePointers.size === 1 && !downStart.moved && (performance.now() - downStart.time < 420);
+        activePointers.delete(e.pointerId);
+
+        if (activePointers.size === 1) {
+          const rem = Array.from(activePointers.values())[0];
+          prevSingle = { x: rem.x, y: rem.y };
+        }
+
+        if (wasSingleTap && e.type === 'pointerup') {
+          const rect = canvas.getBoundingClientRect();
+          pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointerNDC, camera);
+          const hits = raycaster.intersectObjects(atomMeshes, false);
+          if (hits.length > 0) {
+            const grp = hits[0].object.userData.group;
+            selectGroup(state.selectedGroup === grp ? null : grp);
+          } else if (state.selectedGroup !== null) {
+            selectGroup(null);
+          }
+        }
+      }
+
+      canvas.addEventListener('pointerup', handlePointerEnd);
+      canvas.addEventListener('pointercancel', handlePointerEnd);
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        slerpAnim.active = false;
+        const factor = e.deltaY > 0 ? 1.08 : 0.92;
+        targetCameraZ = THREE.MathUtils.clamp(targetCameraZ * factor, 4.2, 26);
+      }, { passive: false });
+
+      // =========================================================================
+      // 10. UI-UPDATES & EVENT-LISTENER
+      // =========================================================================
+
+      let toastTimer = null;
+      function showToast(msg) {
+        const banner = document.getElementById('toast-banner');
+        document.getElementById('toast-text').textContent = msg;
+        banner.classList.remove('opacity-0');
+        banner.classList.add('opacity-100');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          banner.classList.remove('opacity-100');
+          banner.classList.add('opacity-0');
+        }, 3200);
+      }
+
+      function selectGroup(groupId) {
+        state.selectedGroup = groupId;
+        applyGroupHighlighting();
+        const aa = AMINO_ACIDS.find(a => a.id === state.aaId);
+        updateGroupChipsUI(currentMol);
+        updateInfoCardUI(aa);
+        updateSkeletalCardUI(aa);
+        if (groupId && !state.infoCardOpen) toggleInfoCard(true);
+      }
+
+      function buildSidebarList() {
+        const container = document.getElementById('aa-list');
+        container.innerHTML = '';
+        const catOrder = ['unpolar', 'aromatisch', 'polar', 'sauer', 'basisch'];
+
+        for (const catKey of catOrder) {
+          const items = AMINO_ACIDS.filter(a => a.category === catKey);
+          const catInfo = CATEGORY_STYLES[catKey];
+
+          const section = document.createElement('div');
+          section.innerHTML = `
+            <div class="flex items-center gap-1.5 px-2 mb-1.5">
+              <span class="w-2 h-2 rounded-full ${catInfo.dot}"></span>
+              <span class="text-[10px] font-bold uppercase tracking-wider ui-text-muted">${catInfo.label}</span>
+            </div>
+          `;
+          const list = document.createElement('div');
+          list.className = 'space-y-1';
+
+          for (const aa of items) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.aaId = aa.id;
+            btn.className = 'aa-item w-full text-left px-3 py-2.5 rounded-xl transition flex items-center justify-between gap-2 border';
+            btn.innerHTML = `
+              <div class="min-w-0">
+                <div class="font-semibold text-xs sm:text-sm truncate">${aa.displayName}</div>
+                <div class="text-[11px] opacity-75 truncate">${aa.sideShort}</div>
+              </div>
+              <span class="ui-badge text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-lg shrink-0">${aa.code3}</span>
+            `;
+            btn.addEventListener('click', () => {
+              state.aaId = aa.id;
+              state.selectedGroup = null;
+              updateSidebarActiveState();
+              rebuildMolecule({ resetView: true });
+              if (window.innerWidth < 1024) closeSidebarMobile();
+            });
+            list.appendChild(btn);
+          }
+
+          section.appendChild(list);
+          container.appendChild(section);
+        }
+        updateSidebarActiveState();
+      }
+
+      function updateSidebarActiveState() {
+        document.querySelectorAll('.aa-item').forEach(btn => {
+          const active = btn.dataset.aaId === state.aaId;
+          btn.className = active
+            ? 'aa-item aa-item-active w-full text-left px-3 py-2.5 rounded-xl transition flex items-center justify-between gap-2 border border-blue-300 bg-blue-50/90 text-blue-900 shadow-sm'
+            : 'aa-item ui-btn-ghost w-full text-left px-3 py-2.5 rounded-xl transition flex items-center justify-between gap-2 border border-transparent';
+        });
+      }
+
+      function updateHeaderUI(aa) {
+        document.getElementById('header-aa-name').textContent = aa.displayName;
+        document.getElementById('header-aa-codes').textContent = `${aa.code3} · ${aa.code1}`;
+        document.getElementById('header-aa-formula').innerHTML = state.isZwitterion ? aa.formulaZwitter : aa.formulaNeutral;
+        document.getElementById('header-aa-mass').textContent = aa.mass;
+
+        const catEl = document.getElementById('header-aa-category');
+        const catStyle = CATEGORY_STYLES[aa.category];
+        catEl.textContent = catStyle.label;
+        catEl.className = `hidden xl:inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 border ${catStyle.badge}`;
+      }
+
+      function updateGroupChipsUI(mol) {
+        const container = document.getElementById('group-chips');
+        const clearBtn = document.getElementById('btn-clear-group');
+        container.innerHTML = '';
+
+        const groups = getUniqueGroups(mol);
+        clearBtn.classList.toggle('hidden', !state.selectedGroup);
+
+        for (const gId of groups) {
+          const meta = GROUP_META[gId];
+          if (!meta) continue;
+          const isActive = state.selectedGroup === gId;
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = `px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition active:scale-95 ${isActive ? meta.activeChipClass : meta.chipClass}`;
+          chip.textContent = meta.name(state.isZwitterion, state.aaId);
+          chip.addEventListener('click', () => selectGroup(isActive ? null : gId));
+          container.appendChild(chip);
+        }
+      }
+
+      function updateInfoCardUI(aa) {
+        const body = document.getElementById('group-info-body');
+        const sel = state.selectedGroup;
+
+        if (sel && GROUP_META[sel]) {
+          const meta = GROUP_META[sel];
+          body.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h3 class="font-bold ui-text-primary text-sm">${meta.name(state.isZwitterion, aa.id)}</h3>
+                <span class="inline-block mt-0.5 text-[11px] font-medium ui-text-muted">${meta.polarity(state.isZwitterion)}</span>
+              </div>
+              <span class="ui-badge font-mono text-xs font-bold px-2 py-0.5 rounded-lg shrink-0">
+                ${meta.formula(state.isZwitterion, aa.id)}
+              </span>
+            </div>
+            <div class="ui-surface-soft px-2.5 py-1.5 rounded-xl border ui-border text-[11px]">
+              <span class="font-semibold ui-text-primary">Dominierende WW:</span> ${meta.forces(state.isZwitterion)}
+            </div>
+            <p class="ui-text-secondary leading-relaxed">${meta.desc(state.isZwitterion, aa.id)}</p>
+          `;
+        } else {
+          body.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="font-bold ui-text-primary text-sm">${aa.displayName}</h3>
+              <span class="ui-badge text-[11px] font-semibold px-2 py-0.5 rounded-lg">IEP ≈ ${aa.iep}</span>
+            </div>
+            <p class="ui-text-secondary leading-relaxed">${aa.summary}</p>
+            <div class="pt-1 text-[11px] ui-text-muted flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Tippe auf einen Chip, ein 3D-Atom oder in die 2D-Skelettformel.</span>
+            </div>
+          `;
+        }
+      }
+
+      function updateSkeletalCardUI(aa) {
+        const badge = document.getElementById('skeletal-state-badge');
+        badge.textContent = state.isZwitterion ? 'Zwitterion (pH 7)' : 'Neutral';
+        badge.className = state.isZwitterion
+          ? 'chip-blue text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200'
+          : 'ui-badge text-[10px] font-semibold px-1.5 py-0.5 rounded-md';
+
+        const wrap = document.getElementById('skeletal-svg-wrap');
+        wrap.innerHTML = renderSkeletalSVG(aa.id, state.isZwitterion, state.selectedGroup, state.isDark);
+
+        wrap.querySelectorAll('.svg-group').forEach(g => {
+          g.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gid = g.dataset.group;
+            selectGroup(state.selectedGroup === gid ? null : gid);
+          });
+        });
+      }
+
+      function updateForcesLegendUI(aa) {
+        const box = document.getElementById('forces-legend');
+        const rows = [];
+
+        if (state.showHBonds) {
+          rows.push(`
+            <div class="space-y-0.5">
+              <div class="font-bold text-sky-500 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                <span>Wasserstoffbrücken (WBB)</span>
+              </div>
+              <div class="ui-text-secondary pl-4 leading-snug">
+                Donator (N–H / O–H, δ⁺) &amp; Akzeptor (=O / –N–, δ⁻) mit H₂O-Partnern.
+              </div>
+            </div>
+          `);
+        }
+
+        if (state.showLondon) {
+          const hasPi = aa.category === 'aromatisch';
+          const noHydro = ['gly', 'ser', 'cys', 'asp'].includes(aa.id);
+          rows.push(`
+            <div class="space-y-0.5">
+              <div class="font-bold text-amber-500 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span>London-Kräfte (0,1–40 kJ/mol)</span>
+              </div>
+              <div class="ui-text-secondary pl-4 leading-snug">
+                ${hasPi
+                  ? 'Unterform der VdW-WW. Bernstein: unpolare Hülle · <strong class="text-violet-500">Violett:</strong> π-Elektronenwolken (π-π-WW).'
+                  : noHydro
+                    ? 'Unterform der VdW-WW. Diese Aminosäure hat keine ausgeprägte unpolare Seitenkette.'
+                    : 'Unterform der VdW-WW (polarisierbar–polarisierbar): bernsteinfarbene Hülle um unpolare Bereiche.'}
+              </div>
+            </div>
+          `);
+        }
+
+        if (state.showKeesom) {
+          const hasDipoles = currentMol && currentMol.dipoleSites.length > 0;
+          rows.push(`
+            <div class="space-y-0.5">
+              <div class="font-bold text-emerald-500 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span>Keesom-WW (2–25 kJ/mol)</span>
+              </div>
+              <div class="ui-text-secondary pl-4 leading-snug">
+                ${hasDipoles
+                  ? 'Unterform der VdW-WW (permanenter Dipol – permanenter Dipol). Grüne Pfeile zeigen von δ⁺ nach δ⁻.'
+                  : 'Im Zwitterion-Zustand dominieren an α-NH₃⁺/–COO⁻ stärkere Ionen-WW statt ungeladener Dipole.'}
+              </div>
+            </div>
+          `);
+        }
+
+        if (state.showIonic) {
+          rows.push(`
+            <div class="space-y-0.5">
+              <div class="font-bold text-rose-500 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span>Ionen-WW / Salzbrücken</span>
+              </div>
+              <div class="ui-text-secondary pl-4 leading-snug">
+                ${state.isZwitterion
+                  ? 'Elektrostatische Feldlinien an geladenen Gruppen (–COO⁻ / –NH₃⁺).'
+                  : 'Nur im Zwitterion-Zustand (pH 7) vorhanden.'}
+              </div>
+            </div>
+          `);
+        }
+
+        if (state.showLondon || state.showKeesom) {
+          rows.push(`
+            <button id="btn-legend-vdw" type="button" class="w-full text-left text-[10px] font-semibold text-blue-500 hover:underline pt-0.5">
+              ⓘ Alle 3 VdW-Typen (Keesom · Debye · London) anzeigen →
+            </button>
+          `);
+        }
+
+        if (rows.length === 0) {
+          box.classList.add('hidden');
+        } else {
+          box.innerHTML = rows.join('<hr class="ui-border my-1.5" />');
+          box.classList.remove('hidden');
+          const link = document.getElementById('btn-legend-vdw');
+          if (link) link.addEventListener('click', openVdWModal);
+        }
+      }
+
+      function updateViewPresetButtons() {
+        const fBtn = document.getElementById('btn-view-fischer');
+        fBtn.className = state.inFischerView
+          ? 'px-2.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 bg-blue-600 text-white shadow-sm border border-blue-600'
+          : 'chip-blue px-2.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:opacity-90 border border-blue-200';
+
+        const aBtn = document.getElementById('btn-autorotate');
+        aBtn.className = state.autoRotate
+          ? 'px-2 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white transition flex items-center gap-1 shadow-sm'
+          : 'ui-btn-ghost px-2 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1';
+        document.getElementById('icon-auto-play').classList.toggle('hidden', state.autoRotate);
+        document.getElementById('icon-auto-pause').classList.toggle('hidden', !state.autoRotate);
+      }
+
+      function updateConformationButtonsUI() {
+        document.getElementById('conf-staggered').className = `px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+          state.conformation === 'staggered' ? 'ui-seg-active' : 'ui-seg-inactive'
+        }`;
+        document.getElementById('conf-fischer').className = `px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+          state.conformation === 'fischer' ? 'bg-blue-600 text-white shadow-sm' : 'ui-seg-inactive'
+        }`;
+      }
+
+      function updateDockButtonsUI() {
+        document.getElementById('mode-ballstick').className = `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+          state.displayMode === 'ballstick' ? 'ui-seg-active' : 'ui-seg-inactive'
+        }`;
+        document.getElementById('mode-spacefill').className = `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+          state.displayMode === 'spacefill' ? 'ui-seg-active' : 'ui-seg-inactive'
+        }`;
+
+        document.getElementById('state-neutral').className = `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+          !state.isZwitterion ? 'ui-seg-active' : 'ui-seg-inactive'
+        }`;
+        document.getElementById('state-zwitterion').className = `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+          state.isZwitterion ? 'ui-seg-active' : 'ui-seg-inactive'
+        }`;
+
+        const styleToggle = (id, active, activeClasses) => {
+          document.getElementById(id).className = `px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
+            active ? activeClasses : 'ui-toggle-off'
+          }`;
+        };
+
+        styleToggle('toggle-lonepairs', state.showLonePairs, 'chip-amber bg-amber-50 border-amber-400 text-amber-900 shadow-sm');
+        styleToggle('toggle-labels', state.showLabels, 'bg-blue-600 border-blue-600 text-white shadow-sm');
+        styleToggle('toggle-hbond', state.showHBonds, 'chip-sky bg-sky-50 border-sky-400 text-sky-900 shadow-sm');
+        styleToggle('toggle-london', state.showLondon, 'chip-amber bg-amber-50 border-amber-400 text-amber-900 shadow-sm');
+        styleToggle('toggle-keesom', state.showKeesom, 'chip-emerald bg-emerald-50 border-emerald-400 text-emerald-900 shadow-sm');
+        styleToggle('toggle-ionic', state.showIonic, 'chip-rose bg-rose-50 border-rose-400 text-rose-900 shadow-sm');
+      }
+
+      // --- Button-Bindings ---
+
+      document.getElementById('btn-darkmode').addEventListener('click', () => {
+        state.isDark = !state.isDark;
+        applyTheme();
+      });
+
+      document.getElementById('btn-view-fischer').addEventListener('click', () => {
+        state.autoRotate = false;
+        state.inFischerView = true;
+        document.getElementById('fischer-banner').classList.remove('hidden');
+        updateViewPresetButtons();
+        morphToConformation('fischer');
+        startSlerp(QUAT_FISCHER, baseCameraZ, 720);
+      });
+
+      document.getElementById('btn-close-fischer-banner').addEventListener('click', () => {
+        document.getElementById('fischer-banner').classList.add('hidden');
+      });
+
+      document.getElementById('btn-view-3d').addEventListener('click', () => {
+        exitFischerViewBadge();
+        document.getElementById('fischer-banner').classList.add('hidden');
+        startSlerp(QUAT_STANDARD_3D, baseCameraZ, 650);
+      });
+
+      document.getElementById('conf-staggered').addEventListener('click', () => {
+        exitFischerViewBadge();
+        document.getElementById('fischer-banner').classList.add('hidden');
+        morphToConformation('staggered');
+      });
+
+      document.getElementById('conf-fischer').addEventListener('click', () => {
+        morphToConformation('fischer');
+        showToast('Ekliptischer Fischer-Bogen aktiv – seitlich drehen zeigt die C-Krümmung!');
+      });
+
+      document.getElementById('btn-autorotate').addEventListener('click', () => {
+        state.autoRotate = !state.autoRotate;
+        if (state.autoRotate) exitFischerViewBadge();
+        updateViewPresetButtons();
+      });
+
+      document.getElementById('btn-roll-left').addEventListener('click', () => {
+        exitFischerViewBadge();
+        const dest = moleculePivot.quaternion.clone().premultiply(new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), Math.PI / 12));
+        startSlerp(dest, targetCameraZ, 220);
+      });
+
+      document.getElementById('btn-roll-right').addEventListener('click', () => {
+        exitFischerViewBadge();
+        const dest = moleculePivot.quaternion.clone().premultiply(new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), -Math.PI / 12));
+        startSlerp(dest, targetCameraZ, 220);
+      });
+
+      document.getElementById('mode-ballstick').addEventListener('click', () => {
+        state.displayMode = 'ballstick';
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('mode-spacefill').addEventListener('click', () => {
+        state.displayMode = 'spacefill';
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('state-neutral').addEventListener('click', () => {
+        if (!state.isZwitterion) return;
+        state.isZwitterion = false;
+        rebuildMolecule({ resetView: false });
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('state-zwitterion').addEventListener('click', () => {
+        if (state.isZwitterion) return;
+        state.isZwitterion = true;
+        rebuildMolecule({ resetView: false });
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('toggle-lonepairs').addEventListener('click', () => {
+        state.showLonePairs = !state.showLonePairs;
+        if (state.showLonePairs && state.displayMode === 'spacefill') {
+          state.displayMode = 'ballstick';
+          showToast('Auf Kugel-Stab-Modell umgeschaltet, um freie Elektronenpaare zu zeigen.');
+        }
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('toggle-labels').addEventListener('click', () => {
+        state.showLabels = !state.showLabels;
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('toggle-hbond').addEventListener('click', () => {
+        state.showHBonds = !state.showHBonds;
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+        updateForcesLegendUI(AMINO_ACIDS.find(a => a.id === state.aaId));
+      });
+
+      document.getElementById('toggle-london').addEventListener('click', () => {
+        state.showLondon = !state.showLondon;
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+        updateForcesLegendUI(AMINO_ACIDS.find(a => a.id === state.aaId));
+      });
+
+      document.getElementById('toggle-keesom').addEventListener('click', () => {
+        state.showKeesom = !state.showKeesom;
+        applyLayerVisibilities(false);
+        updateDockButtonsUI();
+        updateForcesLegendUI(AMINO_ACIDS.find(a => a.id === state.aaId));
+      });
+
+      document.getElementById('toggle-ionic').addEventListener('click', () => {
+        state.showIonic = !state.showIonic;
+        if (state.showIonic && !state.isZwitterion) {
+          state.isZwitterion = true;
+          showToast('Auf Zwitterion (pH 7) umgeschaltet, um Ionen-WW sichtbar zu machen.');
+          rebuildMolecule({ resetView: false });
+        } else {
+          applyLayerVisibilities(false);
+          updateForcesLegendUI(AMINO_ACIDS.find(a => a.id === state.aaId));
+        }
+        updateDockButtonsUI();
+      });
+
+      document.getElementById('btn-clear-group').addEventListener('click', () => selectGroup(null));
+
+      // VdW-Modal
+      const vdwModal = document.getElementById('vdw-modal');
+      function openVdWModal() {
+        vdwModal.classList.remove('hidden');
+        vdwModal.classList.add('flex');
+      }
+      function closeVdWModal() {
+        vdwModal.classList.add('hidden');
+        vdwModal.classList.remove('flex');
+      }
+      document.getElementById('btn-open-vdw-modal').addEventListener('click', openVdWModal);
+      document.getElementById('btn-close-vdw-modal').addEventListener('click', closeVdWModal);
+      document.getElementById('btn-ok-vdw-modal').addEventListener('click', closeVdWModal);
+      vdwModal.addEventListener('click', (e) => { if (e.target === vdwModal) closeVdWModal(); });
+
+      // Einklappbare Info-Karte & Skelettformel
+      function toggleInfoCard(force = null) {
+        state.infoCardOpen = force !== null ? force : !state.infoCardOpen;
+        document.getElementById('infocard-panel').classList.toggle('hidden', !state.infoCardOpen);
+        document.getElementById('icon-infocard-chevron').style.transform = state.infoCardOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+      }
+      document.getElementById('btn-toggle-infocard').addEventListener('click', () => toggleInfoCard());
+
+      function toggleSkeletalCard(force = null) {
+        state.skeletalOpen = force !== null ? force : !state.skeletalOpen;
+        document.getElementById('skeletal-body').classList.toggle('hidden', !state.skeletalOpen);
+        document.getElementById('icon-skeletal-chev').style.transform = state.skeletalOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+      document.getElementById('btn-toggle-skeletal').addEventListener('click', () => toggleSkeletalCard());
+
+      // Sidebar ein-/ausklappen
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      let desktopSidebarCollapsed = false;
+
+      function openSidebarMobile() {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      }
+      function closeSidebarMobile() {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+      document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+        if (window.innerWidth < 1024) {
+          if (sidebar.classList.contains('-translate-x-full')) openSidebarMobile();
+          else closeSidebarMobile();
+        } else {
+          desktopSidebarCollapsed = !desktopSidebarCollapsed;
+          sidebar.classList.toggle('lg:hidden', desktopSidebarCollapsed);
+          setTimeout(handleResize, 20);
+        }
+      });
+      document.getElementById('btn-close-sidebar-mobile').addEventListener('click', closeSidebarMobile);
+      backdrop.addEventListener('click', closeSidebarMobile);
+
+      // Beamer-Vollbild
+      document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        try {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {
+              showToast('Vollbildmodus wird in dieser Vorschau-Umgebung vom Browser eingeschränkt.');
+            });
+          } else {
+            document.exitFullscreen();
+          }
+        } catch (err) {
+          showToast('Vollbildmodus wird vom Browser nicht unterstützt.');
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const isFs = Boolean(document.fullscreenElement);
+        document.getElementById('icon-fs-enter').classList.toggle('hidden', isFs);
+        document.getElementById('icon-fs-exit').classList.toggle('hidden', !isFs);
+        setTimeout(handleResize, 60);
+      });
+
+      // =========================================================================
+      // 11. RESIZE & ANIMATIONS-LOOP (SLERP + KONFORMATIONS-MORPHING)
+      // =========================================================================
+
+      function handleResize() {
+        const parent = canvas.parentElement;
+        const w = parent.clientWidth;
+        const h = parent.clientHeight;
+        if (w === 0 || h === 0) return;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h, false);
+      }
+      window.addEventListener('resize', handleResize);
+
+      function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+
+        // 1. Konformations-Morphing (Gestaffelt <-> Ekliptischer Fischer-Bogen)
+        if (morphAnim.active) {
+          const rawM = Math.min(1, (now - morphAnim.startTime) / morphAnim.duration);
+          const tm = easeInOutCubic(rawM);
+
+          for (let i = 0; i < atomMeshes.length; i++) {
+            livePositions[i].lerpVectors(morphAnim.fromPos[i], morphAnim.toPos[i], tm);
+            atomMeshes[i].position.copy(livePositions[i]);
+            haloMeshes[i].position.copy(livePositions[i]);
+          }
+          for (const b of bondEntries) {
+            updateSingleBondGeometry(b, livePositions[b.aIdx], livePositions[b.bIdx]);
+          }
+          for (const lr of londonSphereRefs) {
+            lr.mesh.position.copy(livePositions[lr.atomIdx]);
+          }
+          for (const se of spriteEntries) {
+            if (se.atomIdx >= 0 && se.offset) {
+              se.sprite.position.copy(livePositions[se.atomIdx]).add(se.offset);
+            }
+          }
+
+          if (rawM >= 1) {
+            morphAnim.active = false;
+            currentMol = morphAnim.targetMol;
+            // Bindungs-Ebenennormalen für Doppel-/Aromatenbindungen aktualisieren
+            for (let bi = 0; bi < bondEntries.length; bi++) {
+              const pn = currentMol.bonds[bi].planeNormal;
+              bondEntries[bi].planeNormal = pn ? pn.clone() : null;
+              updateSingleBondGeometry(bondEntries[bi], livePositions[bondEntries[bi].aIdx], livePositions[bondEntries[bi].bIdx]);
+            }
+            buildOverlaysForMol(currentMol);
+          }
+        }
+
+        // 2. Smooth Quaternion SLERP (Fischer-Ansicht & 3D-Standard)
+        if (slerpAnim.active) {
+          const rawT = Math.min(1, (now - slerpAnim.startTime) / slerpAnim.duration);
+          const t = easeInOutCubic(rawT);
+          THREE.Quaternion.slerp(slerpAnim.fromQ, slerpAnim.toQ, moleculePivot.quaternion, t);
+          camera.position.z = THREE.MathUtils.lerp(slerpAnim.fromZ, slerpAnim.toZ, t);
+          if (rawT >= 1) slerpAnim.active = false;
+        } else {
+          camera.position.z += (targetCameraZ - camera.position.z) * 0.16;
+
+          if (activePointers.size === 0) {
+            if (Math.abs(angularVel.x) + Math.abs(angularVel.y) + Math.abs(angularVel.z) > 1e-4) {
+              applyWorldRotation(angularVel.x, angularVel.y, angularVel.z);
+              angularVel.x *= 0.89;
+              angularVel.y *= 0.89;
+              angularVel.z *= 0.89;
+            } else if (state.autoRotate) {
+              applyWorldRotation(0, 0.0085, 0);
+            }
+          }
+        }
+
+        // 3. Sanftes Skalieren Kugel-Stab <-> Kalotte
+        for (let i = 0; i < atomMeshes.length; i++) {
+          const curr = atomMeshes[i].scale.x;
+          const tgt = atomTargetRadii[i];
+          if (Math.abs(tgt - curr) > 0.002) {
+            const next = curr + (tgt - curr) * 0.18;
+            atomMeshes[i].scale.setScalar(next);
+            haloMeshes[i].scale.setScalar(next * 1.40);
+          }
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      // =========================================================================
+      // 12. STARTINITIALISIERUNG
+      // =========================================================================
+
+      window.onload = function () {
+        try {
+          buildSidebarList();
+          updateDockButtonsUI();
+          updateViewPresetButtons();
+          updateConformationButtonsUI();
+          handleResize();
+          moleculePivot.quaternion.copy(QUAT_STANDARD_3D);
+          rebuildMolecule({ resetView: true });
+
+          if (window.innerWidth < 640) {
+            toggleInfoCard(false);
+            toggleSkeletalCard(false);
+          }
+          requestAnimationFrame(animate);
+        } catch (err) {
+          console.error('Initialisierungsfehler in AminoLab 3D:', err);
+          showToast('Fehler beim Laden der 3D-Ansicht.');
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
